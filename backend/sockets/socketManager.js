@@ -8,11 +8,7 @@ const Notification = require("../models/Notification");
 const socketManager = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: [
-        process.env.FRONTEND_URL,
-        "https://cohive-seven.vercel.app",
-        "https://cohive-extf.onrender.com"
-      ].filter(Boolean),
+      origin: process.env.FRONTEND_URL || "https://cohive-seven.vercel.app",
       methods: ["GET", "POST"],
       credentials: true
     },
@@ -48,7 +44,7 @@ const socketManager = (server) => {
 
   io.on("connection", async (socket) => {
     const userId = socket.user._id.toString();
-    console.log(`[SOCKET] Connected: ${socket.id} | User: ${socket.user.name} (${userId})`);
+    console.log(`DEBUG: User connected: ${socket.id} (${socket.user.name})`);
 
     // Track online status
     if (!onlineUsers.has(userId)) {
@@ -70,32 +66,66 @@ const socketManager = (server) => {
       });
     }
 
-    // Room Joining Logic
-    socket.on("join-room", async ({ roomId }) => {
-      try {
-        console.log(`[ROOM] Join attempt: Socket ${socket.id} for Room ${roomId}`);
-        if (!roomId) {
-          console.error(`[ROOM] Error: No roomId provided by ${socket.id}`);
-          return;
+    // Handle friend request notification
+    socket.on("send_friend_request", ({ receiverId }) => {
+      io.to(`user_${receiverId}`).emit("new_friend_request", {
+        sender: {
+          _id: socket.user._id,
+          name: socket.user.name,
+          displayName: socket.user.displayName,
+          avatar: socket.user.avatar
         }
+      });
+    });
+
+    socket.on("friend_request_responded", ({ senderId, status }) => {
+      io.to(`user_${senderId}`).emit("friend_request_update", {
+        receiverId: userId,
+        status: status
+      });
+      
+      if (status === 'accepted') {
+        // Both users are now friends, notify both to refresh friend lists
+        io.to(`user_${userId}`).emit("refresh_friends");
+        io.to(`user_${senderId}`).emit("refresh_friends");
+      }
+    });
+
+    // Handle room invite
+    socket.on("send_room_invite", async ({ friendId, roomId, roomName }) => {
+      io.to(`user_${friendId}`).emit("room_invite", {
+        sender: {
+          _id: socket.user._id,
+          name: socket.user.name,
+          displayName: socket.user.displayName,
+          avatar: socket.user.avatar
+        },
+        roomId,
+        roomName
+      });
+
+      // Persist notification
+      await Notification.create({
+        recipient: friendId,
+        sender: socket.user._id,
+        type: 'room_invite',
+        data: { roomId, roomName }
+      });
+    });
+
+    socket.on("join_room", async ({ roomId }) => {
+      try {
+        if (!roomId) return;
 
         // Security: Verify membership in DB
         const dbRoom = await Room.findById(roomId);
-        if (!dbRoom) {
-          console.error(`[ROOM] Error: Room ${roomId} not found in DB`);
-          socket.emit("error_message", { message: "Room not found" });
-          return;
-        }
-
-        const isMember = dbRoom.members.some(m => m.toString() === socket.user._id.toString());
-        if (!isMember) {
-          console.error(`[ROOM] Unauthorized join attempt by ${socket.user.name} (${userId}) for room ${roomId}`);
+        if (!dbRoom || !dbRoom.members.some(m => m.toString() === socket.user._id.toString())) {
+          console.error(`DEBUG: Unauthorized join attempt by ${socket.user.name} for room ${roomId}`);
           socket.emit("error_message", { message: "Unauthorized to join this room" });
           return;
         }
 
         socket.join(roomId);
-        console.log(`[ROOM] Socket ${socket.id} successfully joined room ${roomId}`);
 
         if (!roomUsers[roomId]) {
           roomUsers[roomId] = [];
@@ -112,21 +142,6 @@ const socketManager = (server) => {
           });
         }
 
-        // Send current participants list to the joining user
-        socket.emit("participants-list", roomUsers[roomId]);
-        
-        // Notify others in the room
-        socket.to(roomId).emit("user-connected", {
-          socketId: socket.id,
-          user: {
-            _id: socket.user._id,
-            name: socket.user.name,
-            displayName: socket.user.displayName,
-            avatar: socket.user.avatar
-          }
-        });
-
-        // Sync list for all
         io.to(roomId).emit("room_users", roomUsers[roomId]);
         
         socket.to(roomId).emit("system_message", {
@@ -134,15 +149,25 @@ const socketManager = (server) => {
           isSystem: true
         });
 
-        console.log(`[ROOM] Participants in ${roomId}:`, roomUsers[roomId].map(u => u.userName).join(", "));
+        // Notify room creator if the creator is not the one joining
+        if (dbRoom.createdBy && dbRoom.createdBy.toString() !== socket.user._id.toString()) {
+          await Notification.create({
+            recipient: dbRoom.createdBy,
+            sender: socket.user._id,
+            type: 'room_join',
+            data: { roomId: dbRoom._id, roomName: dbRoom.name }
+          });
+          io.to(`user_${dbRoom.createdBy}`).emit("new_notification");
+        }
+        
+        console.log(`DEBUG: ${socket.user.name} joined room ${roomId}`);
       } catch (err) {
-        console.error("[ROOM] Join error:", err);
+        console.error("Socket join error:", err);
       }
     });
 
-    socket.on("leave-room", (roomId) => {
+    socket.on("leave_room", (roomId) => {
       if (roomUsers[roomId]) {
-        console.log(`[ROOM] User leaving: ${socket.id} from ${roomId}`);
         socket.leave(roomId);
         const userObj = roomUsers[roomId].find((u) => u.socketId === socket.id);
         roomUsers[roomId] = roomUsers[roomId].filter((u) => u.socketId !== socket.id);
@@ -152,55 +177,29 @@ const socketManager = (server) => {
             text: `${userObj.userName} left the room`,
             isSystem: true
           });
-          socket.to(roomId).emit("user-disconnected", socket.id);
         }
         
         if (roomUsers[roomId].length === 0) {
           delete roomUsers[roomId];
         } else {
           io.to(roomId).emit("room_users", roomUsers[roomId]);
+          socket.to(roomId).emit("user_left_video", socket.id);
         }
       }
     });
 
-    // WebRTC Signaling
-    socket.on("call-user", (data) => {
-      const { offer, to, roomId } = data;
-      console.log(`[WEBRTC] Offer from ${socket.id} to ${to} in room ${roomId}`);
-      io.to(to).emit("incoming-call", {
-        offer,
-        from: socket.id,
-        user: {
-          _id: socket.user._id,
-          name: socket.user.name,
-          displayName: socket.user.displayName,
-          avatar: socket.user.avatar
-        }
-      });
+    socket.on("typing", (data) => {
+      socket.to(data.roomId).emit("user_typing", socket.user.name);
     });
 
-    socket.on("answer-call", (data) => {
-      const { answer, to, roomId } = data;
-      console.log(`[WEBRTC] Answer from ${socket.id} to ${to} in room ${roomId}`);
-      io.to(to).emit("answer-call", {
-        answer,
-        from: socket.id
-      });
-    });
-
-    socket.on("ice-candidate", (data) => {
-      const { candidate, to, roomId } = data;
-      // console.log(`[WEBRTC] ICE Candidate from ${socket.id} to ${to}`);
-      io.to(to).emit("ice-candidate", {
-        candidate,
-        from: socket.id
-      });
-    });
-
-    // Chat & Features
     socket.on("send_message", async (data) => {
       try {
         if (!data.roomId || (!data.message && !data.file)) return;
+
+        // Security: Verify user is in the room
+        if (!socket.rooms.has(data.roomId)) {
+          return socket.emit("error_message", { message: "Unauthorized: You have not joined this room" });
+        }
 
         const newMessage = await Message.create({
           roomId: data.roomId,
@@ -216,25 +215,157 @@ const socketManager = (server) => {
           ...populatedMessage.toObject(),
           userName: socket.user.displayName || socket.user.name, 
         });
+
+        // Mentions check
+        if (data.message && data.message.includes('@')) {
+          const mentionMatches = data.message.match(/@(\w+)/g);
+          if (mentionMatches) {
+            const usernames = mentionMatches.map(m => m.slice(1));
+            const mentionedUsers = await User.find({ username: { $in: usernames } });
+            
+            for (const mUser of mentionedUsers) {
+              if (mUser._id.toString() !== socket.user._id.toString()) {
+                await Notification.create({
+                  recipient: mUser._id,
+                  sender: socket.user._id,
+                  type: 'mention',
+                  data: { 
+                    roomId: data.roomId, 
+                    messageId: newMessage._id,
+                    text: data.message
+                  }
+                });
+                io.to(`user_${mUser._id}`).emit("new_notification");
+              }
+            }
+          }
+        }
       } catch (err) {
-        console.error("Message error:", err);
+        console.error("Message save error:", err);
       }
     });
 
-    socket.on("typing", (data) => {
-      socket.to(data.roomId).emit("user_typing", socket.user.name);
+    socket.on("resource_added", (data) => {
+      if (socket.rooms.has(data.roomId)) {
+        socket.to(data.roomId).emit("resource_added", data.resource);
+      }
+    });
+
+    socket.on("resource_deleted", (data) => {
+      if (socket.rooms.has(data.roomId)) {
+        socket.to(data.roomId).emit("resource_deleted", data.resourceId);
+      }
+    });
+
+    socket.on("note_created", (data) => {
+      if (socket.rooms.has(data.roomId)) {
+        socket.to(data.roomId).emit("note_created", data.note);
+      }
+    });
+
+    socket.on("note_updated", (data) => {
+      if (socket.rooms.has(data.roomId)) {
+        socket.to(data.roomId).emit("note_updated", data.note);
+      }
+    });
+
+    socket.on("note_deleted", (data) => {
+      if (socket.rooms.has(data.roomId)) {
+        socket.to(data.roomId).emit("note_deleted", data.noteId);
+      }
     });
 
     socket.on("draw_event", (data) => {
-      socket.to(data.roomId).emit("draw_event", data.drawData);
+      if (socket.rooms.has(data.roomId)) {
+        socket.to(data.roomId).emit("draw_event", data.drawData);
+      }
     });
 
     socket.on("clear_whiteboard", (data) => {
-      socket.to(data.roomId).emit("clear_whiteboard");
+      if (socket.rooms.has(data.roomId)) {
+        socket.to(data.roomId).emit("clear_whiteboard");
+      }
+    });
+
+    socket.on("update_profile", (data) => {
+      const { displayName, avatar } = data;
+      // Update socket user object
+      if (displayName) socket.user.displayName = displayName;
+      if (avatar) socket.user.avatar = avatar;
+
+      // Update in-memory roomUsers
+      for (const roomId in roomUsers) {
+        const userObj = roomUsers[roomId].find((u) => u.userId.toString() === socket.user._id.toString());
+        if (userObj) {
+          userObj.userName = displayName || socket.user.name;
+          userObj.avatar = avatar || socket.user.avatar;
+          io.to(roomId).emit("room_users", roomUsers[roomId]);
+          
+          // Also notify about profile change for chat/etc
+          io.to(roomId).emit("profile_updated", {
+            userId: socket.user._id,
+            displayName: userObj.userName,
+            avatar: userObj.avatar
+          });
+        }
+      }
+    });
+
+    // Check online status
+    socket.on("check_online_status", (userIds, callback) => {
+      const statusMap = {};
+      userIds.forEach(id => {
+        statusMap[id] = onlineUsers.has(id.toString()) ? 'online' : 'offline';
+      });
+      callback(statusMap);
+    });
+
+    // WebRTC Signaling - Multi-user Support
+    socket.on("join_video_call", ({ roomId }) => {
+      if (socket.rooms.has(roomId)) {
+        // Broadcast to others that a new user is ready for video
+        socket.to(roomId).emit("user_joined_video", { 
+          socketId: socket.id, 
+          user: {
+            _id: socket.user._id,
+            name: socket.user.name,
+            displayName: socket.user.displayName,
+            avatar: socket.user.avatar
+          }
+        });
+      }
+    });
+
+    socket.on("webrtc_signal", (data) => {
+      const { targetSocketId, signal, type, roomId } = data;
+      if (socket.rooms.has(roomId)) {
+        io.to(targetSocketId).emit("webrtc_signal", {
+          type,
+          signal,
+          fromSocketId: socket.id,
+          user: {
+            _id: socket.user._id,
+            name: socket.user.name,
+            displayName: socket.user.displayName,
+            avatar: socket.user.avatar
+          }
+        });
+      }
+    });
+
+    socket.on("media_state_change", (data) => {
+      const { roomId, type, enabled } = data;
+      if (socket.rooms.has(roomId)) {
+        socket.to(roomId).emit("user_media_state_changed", {
+          socketId: socket.id,
+          type, // 'audio', 'video', 'screen'
+          enabled
+        });
+      }
     });
 
     socket.on("disconnect", async () => {
-      console.log(`[SOCKET] Disconnected: ${socket.id}`);
+      console.log(`DEBUG: User disconnected: ${socket.id} (${socket.user.name})`);
 
       // Update online status
       const userSockets = onlineUsers.get(userId);
@@ -243,6 +374,7 @@ const socketManager = (server) => {
         if (userSockets.size === 0) {
           onlineUsers.delete(userId);
           
+          // Notify friends that user is offline
           const userWithFriends = await User.findById(userId).populate('friends', '_id');
           if (userWithFriends && userWithFriends.friends) {
             userWithFriends.friends.forEach(friend => {
@@ -255,22 +387,23 @@ const socketManager = (server) => {
         }
       }
 
-      // Cleanup room presence
       for (const roomId in roomUsers) {
         const userIndex = roomUsers[roomId].findIndex((u) => u.socketId === socket.id);
         if (userIndex !== -1) {
           const userObj = roomUsers[roomId][userIndex];
-          socket.to(roomId).emit("system_message", {
+          
+          io.to(roomId).emit("system_message", {
             text: `${userObj.userName} left the room`,
             isSystem: true
           });
-          socket.to(roomId).emit("user-disconnected", socket.id);
+
           roomUsers[roomId].splice(userIndex, 1);
           
           if (roomUsers[roomId].length === 0) {
             delete roomUsers[roomId];
           } else {
             io.to(roomId).emit("room_users", roomUsers[roomId]);
+            socket.to(roomId).emit("user_left_video", socket.id);
           }
         }
       }

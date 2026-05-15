@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import api from '../services/api';
+import socket from '../services/socket';
+
 const useNotificationStore = create((set, get) => ({
   notifications: [],
   unreadCount: 0,
@@ -57,7 +59,7 @@ const useNotificationStore = create((set, get) => ({
     }
   },
 
-  addNotification: () => {
+  addNotification: (notification) => {
     // If it's just a trigger to refresh, we can fetch
     get().fetchNotifications();
   }

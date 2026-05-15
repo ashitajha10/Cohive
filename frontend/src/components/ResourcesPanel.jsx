@@ -58,13 +58,15 @@ const ResourcesPanel = ({ roomId, user, room }) => {
   if (loading) return <div className="flex-1 flex items-center justify-center bg-[#050608]/40"><div className="w-12 h-12 border-4 border-cyber-cyan border-t-transparent rounded-full animate-spin shadow-glow-cyan"></div></div>;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-transparent relative overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-[#050608]/40 overflow-hidden">
       {/* Panel Header */}
-      <div className="px-6 py-6 sm:px-8 sm:py-6 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="px-6 py-6 sm:px-10 sm:py-8 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/[0.02] backdrop-blur-xl">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Mission Storage</h2>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1">
-            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">{resources.length} ITEMS FOUND</span>
+          <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter glow-text-cyan">Mission Storage</h2>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5">
+            <span className="text-[9px] sm:text-[10px] font-black text-cyber-cyan uppercase tracking-[0.4em]">SYNCED ASSETS</span>
+            <div className="hidden sm:block w-1 h-1 rounded-full bg-gray-800" />
+            <span className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest">{resources.length} ITEMS FOUND</span>
           </div>
         </div>
         
@@ -72,23 +74,24 @@ const ResourcesPanel = ({ roomId, user, room }) => {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setIsAddModalOpen(true)}
-          className="w-full sm:w-auto justify-center px-6 py-3 bg-white text-black hover:bg-gray-200 rounded-full font-semibold text-sm transition-all flex items-center gap-2"
+          className="w-full sm:w-auto justify-center px-6 py-4 sm:px-8 sm:py-4 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-glow-cyan transition-all flex items-center gap-3 hover:bg-cyber-cyan"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-          Add Resource
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
+          New Uplink
         </motion.button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-10 custom-scrollbar relative z-10">
+      <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
         {resources.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-[#161b22]/50 p-12 rounded-3xl border border-white/5 backdrop-blur-xl"
+              className="bg-white/[0.03] p-12 rounded-[4rem] border border-dashed border-white/10"
             >
-              <h3 className="text-xl font-bold text-white mb-2">Storage Empty</h3>
-              <p className="text-gray-400 font-medium text-sm max-w-xs mx-auto">No collaborative assets have been synchronized in this mission sector yet.</p>
+              <img src="/space_mascot_astronaut_1778492786001.png" className="w-32 h-32 mx-auto mb-8 opacity-20 grayscale" alt="" />
+              <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Storage Empty</h3>
+              <p className="text-gray-600 font-black uppercase tracking-[0.2em] text-[9px] max-w-xs mx-auto">No collaborative assets have been synchronized in this mission sector yet.</p>
             </motion.div>
           </div>
         ) : (
