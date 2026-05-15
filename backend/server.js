@@ -1,4 +1,12 @@
 require('dotenv').config();
+const dns = require('dns');
+
+// Set global DNS servers to avoid ECONNREFUSED errors with MongoDB Atlas SRV records
+// This is a common issue in Node.js on some Windows/ISP configurations.
+if (dns.setServers) {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+}
+
 const http = require('http');
 const app = require('./app');
 const connectDB = require('./config/db');
