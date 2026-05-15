@@ -62,7 +62,7 @@ const login = async (req, res) => {
 
 const googleCallback = (req, res) => {
   const token = generateToken(req.user);
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const frontendUrl = process.env.FRONTEND_URL || "";
   res.redirect(`${frontendUrl}?token=${token}`);
 };
 
