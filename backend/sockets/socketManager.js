@@ -8,7 +8,7 @@ const Notification = require("../models/Notification");
 const socketManager = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || "",
+      origin: process.env.FRONTEND_URL || "https://cohive-seven.vercel.app",
       methods: ["GET", "POST"],
     },
   });

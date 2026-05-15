@@ -62,7 +62,7 @@ const login = async (req, res) => {
 
 const googleCallback = (req, res) => {
   const token = generateToken(req.user);
-  const frontendUrl = process.env.FRONTEND_URL || "";
+  const frontendUrl = process.env.FRONTEND_URL || "https://cohive-seven.vercel.app";
   res.redirect(`${frontendUrl}?token=${token}`);
 };
 
