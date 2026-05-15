@@ -10,6 +10,7 @@ const socketManager = (server) => {
     cors: {
       origin: process.env.FRONTEND_URL || "https://cohive-seven.vercel.app",
       methods: ["GET", "POST"],
+      credentials: true
     },
   });
 

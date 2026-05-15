@@ -28,11 +28,20 @@ export const useWebRTC = (roomId, user) => {
       initiator: true,
       trickle: true,
       stream,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
+        ]
+      }
     });
+
+    peer.on('connect', () => console.log('Peer CONNECTED to', targetSocketId));
+    peer.on('error', (err) => console.error('Peer ERROR with', targetSocketId, err));
 
     peer.on('signal', (signal) => {
       socket.emit('webrtc_signal', {
-        type: 'offer',
+        type: signal.type || (signal.candidate ? 'candidate' : 'offer'),
         targetSocketId,
         callerId,
         signal,
@@ -48,11 +57,20 @@ export const useWebRTC = (roomId, user) => {
       initiator: false,
       trickle: true,
       stream,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
+        ]
+      }
     });
+
+    peer.on('connect', () => console.log('Peer CONNECTED with', callerId));
+    peer.on('error', (err) => console.error('Peer ERROR with', callerId, err));
 
     peer.on('signal', (signal) => {
       socket.emit('webrtc_signal', {
-        type: 'answer',
+        type: signal.type || (signal.candidate ? 'candidate' : 'answer'),
         targetSocketId: callerId,
         signal,
         roomId
@@ -135,19 +153,27 @@ export const useWebRTC = (roomId, user) => {
       peersRef.current[socketId] = peer;
     };
 
-    const handleWebRTCSignal = ({ type, signal, callerId, fromSocketId }) => {
-      const senderId = type === 'offer' ? fromSocketId : fromSocketId;
+    const handleWebRTCSignal = ({ type, signal, fromSocketId, user: signalUser }) => {
+      console.log(`WebRTC signal received from ${fromSocketId}:`, type);
       
+      let peer = peersRef.current[fromSocketId];
+
       if (type === 'offer') {
-        const peer = addPeer(signal, fromSocketId, localStream);
+        if (peer) {
+          console.warn('Received offer for existing peer, destroying old one.');
+          peer.destroy();
+        }
+        
+        peer = addPeer(signal, fromSocketId, localStream);
         
         peer.on('stream', (remoteStream) => {
+          console.log('Remote stream received from:', fromSocketId);
           streamsRef.current[fromSocketId] = remoteStream;
           setParticipants(prev => {
             if (prev.find(p => p.socketId === fromSocketId)) return prev;
             return [...prev, { 
               socketId: fromSocketId, 
-              user: null, // User info will be synced via room_users or similar
+              user: signalUser, 
               stream: remoteStream,
               isMuted: false,
               isCameraOff: false,
@@ -156,16 +182,22 @@ export const useWebRTC = (roomId, user) => {
           });
         });
 
-        peer.on('close', () => cleanupPeer(fromSocketId));
+        peer.on('close', () => {
+          console.log('Peer connection closed:', fromSocketId);
+          cleanupPeer(fromSocketId);
+        });
+
         peer.on('error', (err) => {
-          console.error('Peer error:', err);
+          console.error('Peer error:', fromSocketId, err);
           cleanupPeer(fromSocketId);
         });
 
         peersRef.current[fromSocketId] = peer;
-      } else if (type === 'answer' || type === 'ice-candidate') {
-        const peer = peersRef.current[fromSocketId];
-        if (peer) peer.signal(signal);
+      } else if (peer) {
+        // This handles 'answer' and 'ice-candidate' (trickle ICE)
+        peer.signal(signal);
+      } else {
+        console.warn('Received signal for unknown peer:', fromSocketId);
       }
     };
 
