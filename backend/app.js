@@ -17,7 +17,11 @@ const notificationRoutes = require("./routes/notification.routes");
 const app = express();
 
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "https://cohive-seven.vercel.app",
+  origin: [
+    process.env.FRONTEND_URL,
+    "https://cohive-seven.vercel.app",
+    "https://cohive-extf.onrender.com"
+  ].filter(Boolean),
   credentials: true,
 };
 

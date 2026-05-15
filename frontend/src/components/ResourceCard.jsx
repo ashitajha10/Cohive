@@ -37,24 +37,21 @@ const ResourceCard = ({ resource, onDelete, canDelete }) => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-white/[0.05] to-white/[0.01] p-6 rounded-[2.5rem] border border-white/10 hover:border-cyber-cyan/50 hover:shadow-[0_0_30px_rgba(0,243,255,0.15)] transition-all duration-500 group relative overflow-hidden backdrop-blur-xl hover:-translate-y-1">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-cyber-cyan/20 to-transparent blur-[40px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-      <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-cyber-pink/10 rounded-full blur-[40px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-      
-      <div className="flex items-start gap-5 relative z-10">
-        <div className="w-14 h-14 bg-[#050608] rounded-2xl flex items-center justify-center flex-shrink-0 border border-white/10 group-hover:border-cyber-cyan/30 group-hover:shadow-[0_0_20px_-5px_rgba(0,243,255,0.4)] transition-all duration-500">
+    <div className="bg-[#161b22] p-6 rounded-2xl border border-white/5 hover:border-white/10 hover:bg-[#1c2128] transition-all duration-300 group relative overflow-hidden flex flex-col h-full">
+      <div className="flex items-start gap-4 relative z-10 flex-1">
+        <div className="w-12 h-12 bg-black/50 rounded-xl flex items-center justify-center flex-shrink-0 border border-white/5 group-hover:bg-black/80 transition-colors">
           {getIcon()}
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-black text-white truncate group-hover:text-cyber-cyan transition-colors uppercase tracking-tight" title={resource.title}>
+          <h4 className="text-base font-semibold text-white truncate group-hover:text-cyber-cyan transition-colors" title={resource.title}>
             {resource.title}
           </h4>
-          <div className="flex items-center gap-2.5 mt-1.5">
-            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest truncate max-w-[100px] group-hover:text-gray-400">
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[11px] font-medium text-gray-400 truncate max-w-[100px]">
               {uploaderName}
             </span>
-            <div className="w-1 h-1 bg-gray-700 rounded-full group-hover:bg-cyber-cyan transition-colors" />
-            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest group-hover:text-gray-400">
+            <div className="w-1 h-1 bg-gray-600 rounded-full" />
+            <span className="text-[11px] font-medium text-gray-500">
               {new Date(resource.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
           </div>
@@ -62,28 +59,22 @@ const ResourceCard = ({ resource, onDelete, canDelete }) => {
         {canDelete && (
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(resource._id); }}
-            className="opacity-0 group-hover:opacity-100 p-2 text-gray-500 hover:text-cyber-pink transition-all bg-black/40 hover:bg-cyber-pink/10 rounded-xl"
+            className="opacity-0 group-hover:opacity-100 p-2 text-gray-500 hover:text-red-400 transition-colors bg-black/20 hover:bg-red-500/10 rounded-lg"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </button>
         )}
       </div>
       
-      <div className="mt-6 flex gap-3 relative z-10">
+      <div className="mt-5 relative z-10">
         <button
           onClick={handleOpen}
-          className="flex-1 bg-white/[0.03] hover:bg-cyber-cyan text-gray-400 hover:text-black hover:shadow-[0_0_20px_-5px_rgba(0,243,255,0.4)] py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 border border-white/5 hover:border-transparent"
+          className="w-full bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white py-2.5 rounded-xl text-sm font-semibold transition-all border border-transparent"
         >
-          {resource.type === 'link' ? 'OPEN UPLINK' : 'DOWNLOAD ASSET'}
+          {resource.type === 'link' ? 'Open Link' : 'Download'}
         </button>
-      </div>
-
-      <div className="absolute -bottom-2 -right-2 opacity-[0.02] group-hover:opacity-[0.06] transition-opacity duration-700 pointer-events-none">
-        <div className="w-24 h-24 rotate-12 scale-150">
-          {getIcon()}
-        </div>
       </div>
     </div>
   );
