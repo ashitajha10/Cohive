@@ -5,7 +5,6 @@ import socket from "../services/socket";
 import api from "../services/api";
 import Layout from "../components/Layout";
 import { useWebRTC } from "../hooks/useWebRTC";
-import Card from "../components/Card";
 import Button from "../components/Button";
 import Loader from "../components/Loader";
 import useAuthStore from "../store/authStore";
@@ -54,8 +53,6 @@ function Room() {
   const [cameraOff, setCameraOff] = useState(false);
 
   // UI State
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [copySuccess, setCopySuccess] = useState("");
   const [theaterMode, setTheaterMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -84,9 +81,7 @@ function Room() {
 
   const copyToClipboard = (text, type) => {
     navigator.clipboard.writeText(text).then(() => {
-      setCopySuccess(type);
       showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} copied to clipboard!`, "success");
-      setTimeout(() => setCopySuccess(""), 3000);
     });
   };
 
@@ -106,6 +101,7 @@ function Room() {
       const res = await api.post("/upload", formData, { headers: { "Content-Type": "multipart/form-data" } });
       socket.emit("send_message", { roomId: id, file: res.data.url, type: "file" });
     } catch (err) {
+      console.error(err);
       showToast("Upload failed: Connection error", "error");
     } finally {
       setIsUploading(false);
@@ -134,17 +130,12 @@ function Room() {
     try {
       await api.post(`/rooms/${id}/leave`);
       navigate("/dashboard");
-    } catch (err) { showToast("Failed to leave room", "error"); }
+    } catch (err) { 
+        console.error(err);
+        showToast("Failed to leave room", "error"); 
+    }
   };
 
-  const handleDeleteRoom = async () => {
-    if (!window.confirm("Are you sure you want to delete this room?")) return;
-    setIsDeleting(true);
-    try {
-      await api.delete(`/rooms/${id}`);
-      navigate("/dashboard");
-    } catch (err) { showToast("Failed to delete room", "error"); } finally { setIsDeleting(false); }
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -152,7 +143,12 @@ function Room() {
         const [roomRes, msgRes] = await Promise.all([ api.get(`/rooms/${id}`), api.get(`/messages/${id}/messages`) ]);
         setRoom(roomRes.data);
         setMessages(msgRes.data);
-      } catch (err) { setError(true); } finally { setLoading(false); }
+      } catch (err) { 
+          console.error(err);
+          setError(true); 
+      } finally { 
+          setLoading(false); 
+      }
     };
     if (id) fetchData();
   }, [id]);
