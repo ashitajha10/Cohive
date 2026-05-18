@@ -68,7 +68,7 @@ const Layout = ({ children }) => {
             />
           </div>
         )}
-        <main className={`flex-1 overflow-x-hidden overflow-y-auto ${isRoomRoute ? 'pt-8' : ''} p-6 md:p-8 lg:p-10 custom-scrollbar relative`}>
+        <main className={`flex-1 overflow-x-hidden overflow-y-auto ${isRoomRoute ? (isNavbarHovered ? '!pt-28' : '!pt-10') : ''} p-6 md:p-8 lg:p-10 transition-all duration-300 custom-scrollbar relative`}>
           <div className="max-w-[1600px] mx-auto h-full">
             {children}
           </div>
