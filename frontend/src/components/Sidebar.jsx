@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import useAuthStore from '../store/authStore';
 import Logo from './Logo';
+import { getAvatarUrl } from '../utils/avatar';
 
 const Sidebar = ({ onClose, isCollapsed, onToggleCollapse, isCollapsible }) => {
   const location = useLocation();
@@ -91,7 +92,7 @@ const Sidebar = ({ onClose, isCollapsed, onToggleCollapse, isCollapsible }) => {
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 border border-purple-200 flex items-center justify-center overflow-hidden flex-shrink-0">
               {user.avatar ? (
-                <img src={user.avatar} alt={user.displayName || user.name} className="w-full h-full object-cover" />
+                <img src={getAvatarUrl(user.avatar)} alt={user.displayName || user.name} className="w-full h-full object-cover" />
               ) : (
                 <span className="font-bold text-sm text-[#8b5cf6] uppercase">
                   {(user.displayName?.charAt(0) || user.name?.charAt(0) || 'U')}

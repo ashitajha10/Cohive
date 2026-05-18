@@ -34,12 +34,18 @@ const Navbar = ({ onMenuClick }) => {
               <p className="text-sm font-bold text-gray-900 leading-tight">{user.displayName || user.name}</p>
               <p className="text-[11px] text-gray-400 font-medium">{user.email}</p>
             </div>
-            <div className="w-10 h-10 rounded-full border-2 border-purple-100 p-0.5 overflow-hidden">
-              <img 
-                src={getAvatarUrl(user.avatar)} 
-                alt="Profile" 
-                className="w-full h-full object-cover rounded-full"
-              />
+            <div className="w-10 h-10 rounded-full border-2 border-purple-100 p-0.5 overflow-hidden bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center">
+              {user.avatar ? (
+                <img 
+                  src={getAvatarUrl(user.avatar)} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                <span className="font-bold text-sm text-[#8b5cf6] uppercase">
+                  {(user.displayName?.charAt(0) || user.name?.charAt(0) || 'U')}
+                </span>
+              )}
             </div>
           </div>
         )}
