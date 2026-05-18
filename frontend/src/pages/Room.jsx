@@ -183,6 +183,11 @@ function Room({ roomIdProp, isMinimized, onLeave }) {
   if (isMinimized) {
     return (
       <div className="w-full h-full bg-gray-950 text-white flex flex-col justify-between p-3 relative group overflow-hidden rounded-3xl border border-white/10 shadow-2xl animate-fade-in">
+        <div className="hidden">
+          {participants.map(p => (
+            <AudioElement key={p.socketId} stream={p.stream} isMuted={p.isMuted} />
+          ))}
+        </div>
         <div className="absolute inset-0 z-0 flex items-center justify-center bg-black/80 pointer-events-none overflow-hidden rounded-3xl">
           <VideoPanel 
             participants={participants} 
@@ -229,6 +234,11 @@ function Room({ roomIdProp, isMinimized, onLeave }) {
 
   return (
     <Layout>
+      <div className="hidden">
+        {participants.map(p => (
+          <AudioElement key={p.socketId} stream={p.stream} isMuted={p.isMuted} />
+        ))}
+      </div>
       <div className="flex flex-col h-full gap-8 animate-fade-in">
         
         {/* Room Header */}
@@ -497,5 +507,18 @@ function Room({ roomIdProp, isMinimized, onLeave }) {
     </Layout>
   );
 }
+
+const AudioElement = ({ stream, isMuted }) => {
+  const audioRef = React.useRef(null);
+  
+  React.useEffect(() => {
+    if (audioRef.current && stream) {
+      audioRef.current.srcObject = stream;
+      audioRef.current.play().catch(e => console.warn("Audio autoplay blocked:", e));
+    }
+  }, [stream]);
+
+  return <audio ref={audioRef} autoPlay playsInline muted={isMuted} />;
+};
 
 export default Room;
