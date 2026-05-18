@@ -64,6 +64,7 @@ const NotificationDropdown = () => {
     unreadCount, 
     markAsRead, 
     markAllAsRead, 
+    clearAllNotifications,
     deleteNotification 
   } = useNotificationStore();
 
@@ -124,12 +125,24 @@ const NotificationDropdown = () => {
                   <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Notifications</h3>
                   <p className="text-[9px] font-black text-[#8b5cf6] uppercase tracking-[0.25em] mt-0.5">Recent Activity</p>
                 </div>
-                <button 
-                  onClick={markAllAsRead}
-                  className="text-[10px] font-black text-gray-400 hover:text-[#8b5cf6] uppercase tracking-widest transition-colors duration-200"
-                >
-                  Mark all as read
-                </button>
+                <div className="flex items-center gap-3">
+                  {unreadCount > 0 && (
+                    <button 
+                      onClick={markAllAsRead}
+                      className="text-[10px] font-black text-gray-400 hover:text-[#8b5cf6] uppercase tracking-widest transition-colors duration-200"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
+                  {notifications.length > 0 && (
+                    <button 
+                      onClick={clearAllNotifications}
+                      className="text-[10px] font-black text-red-400 hover:text-red-600 uppercase tracking-widest transition-colors duration-200"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="max-h-[420px] overflow-y-auto custom-scrollbar bg-white">
@@ -190,18 +203,6 @@ const NotificationDropdown = () => {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                                     </svg>
                                     Copy Code
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setIsOpen(false);
-                                      navigate(content.link);
-                                    }}
-                                    className="px-3 py-1.5 bg-purple-50 hover:bg-[#8b5cf6] text-[#8b5cf6] hover:text-white rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all duration-200 flex items-center gap-1 border border-purple-100 shadow-sm hover:shadow"
-                                  >
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                                    </svg>
-                                    Join Directly
                                   </button>
                                 </div>
                               )}
