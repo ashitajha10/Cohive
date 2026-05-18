@@ -36,6 +36,7 @@ function Room({ roomIdProp, isMinimized, onLeave }) {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [roomUsers, setRoomUsers] = useState([]);
   const [isRoomJoined, setIsRoomJoined] = useState(false);
+  const [isControlsHovered, setIsControlsHovered] = useState(false);
   
   const { friends, fetchFriends, onlineStatus } = useFriendStore();
   
@@ -311,7 +312,11 @@ function Room({ roomIdProp, isMinimized, onLeave }) {
               </button>
             </div>
 
-            <div className="flex-1 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden relative">
+            <div 
+              className="flex-1 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden relative"
+              onMouseEnter={() => setIsControlsHovered(true)}
+              onMouseLeave={() => setIsControlsHovered(false)}
+            >
               {activeTab === 'video' ? (
                 <div className="w-full h-full flex flex-col">
                   {localStream || mediaError ? (
@@ -339,7 +344,7 @@ function Room({ roomIdProp, isMinimized, onLeave }) {
                   )}
 
                   {/* Room Controls Overlay */}
-                  <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 px-8 py-4 bg-gray-950/90 backdrop-blur-xl rounded-[2rem] border border-white/10 z-20 call-control-panel">
+                  <div className={`absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 px-8 py-4 bg-gray-950/90 backdrop-blur-xl rounded-[2rem] border border-white/10 z-20 call-control-panel transition-all duration-300 transform ${isControlsHovered ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-16 opacity-0 scale-95 pointer-events-none'}`}>
                     <button 
                       onClick={handleToggleMute}
                       className={`p-4 rounded-full transition-all ${muted ? 'bg-red-500 text-white shadow-lg shadow-red-200' : 'bg-white text-gray-900 hover:bg-gray-50'}`}
