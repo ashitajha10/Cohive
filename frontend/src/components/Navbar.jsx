@@ -4,7 +4,7 @@ import useAuthStore from "../store/authStore";
 import { getAvatarUrl } from "../utils/avatar";
 import NotificationDropdown from "./NotificationDropdown";
 
-const Navbar = ({ onMenuClick }) => {
+const Navbar = ({ onMenuClick, onCollapse, isCollapsible }) => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
@@ -28,6 +28,18 @@ const Navbar = ({ onMenuClick }) => {
       </div>
 
       <div className="flex items-center gap-6">
+        {isCollapsible && (
+          <button 
+            onClick={onCollapse} 
+            className="p-2 text-gray-400 hover:text-[#8b5cf6] hover:bg-purple-50 rounded-xl transition-all shadow-sm flex items-center gap-2 text-xs font-bold"
+            title="Collapse Top Bar"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
+            </svg>
+            <span className="hidden sm:inline">Collapse</span>
+          </button>
+        )}
         {user && (
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">

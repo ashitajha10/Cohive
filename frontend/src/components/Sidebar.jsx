@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import useAuthStore from '../store/authStore';
 import Logo from './Logo';
 
-const Sidebar = ({ onClose }) => {
+const Sidebar = ({ onClose, onCollapse, isCollapsible }) => {
   const location = useLocation();
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -48,10 +48,21 @@ const Sidebar = ({ onClose }) => {
   ];
 
   return (
-    <div className="w-64 h-full bg-white border-r border-gray-100 flex flex-col p-6 shadow-sm overflow-y-auto custom-scrollbar">
-      {/* Logo */}
-      <div className="mb-12">
+    <div className="w-64 h-full bg-white border-r border-gray-100 flex flex-col p-6 shadow-sm overflow-y-auto custom-scrollbar shrink-0">
+      {/* Logo and Collapse Button */}
+      <div className="mb-12 flex items-center justify-between">
         <Logo variant="purple" size="md" showText={true} />
+        {isCollapsible && (
+          <button 
+            onClick={onCollapse} 
+            className="p-2 text-gray-400 hover:text-[#8b5cf6] hover:bg-purple-50 rounded-xl transition-all shadow-sm"
+            title="Collapse Sidebar"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Menu Label */}
