@@ -13,11 +13,26 @@ const resourceRoutes = require("./routes/resource.routes");
 const noteRoutes = require("./routes/note.routes");
 const whiteboardRoutes = require("./routes/whiteboard.routes");
 const notificationRoutes = require("./routes/notification.routes");
+const dmRoutes = require("./routes/dm.routes");
 
 const app = express();
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "https://cohive-seven.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175"
+].filter(Boolean);
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "https://cohive-seven.vercel.app",
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || origin.startsWith("http://localhost:")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
 };
 
@@ -41,6 +56,7 @@ app.use("/api/resources", resourceRoutes);
 app.use("/api/notes", noteRoutes);
 app.use("/api/whiteboard", whiteboardRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/dm", dmRoutes);
 
 
 module.exports = app;

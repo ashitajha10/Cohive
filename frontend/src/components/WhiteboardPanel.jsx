@@ -10,26 +10,61 @@ const WhiteboardPanel = ({ roomId, user }) => {
   const [brushSize, setBrushSize] = useState(5);
   const [tool, setTool] = useState('pen');
   const [cursors, setCursors] = useState({});
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    canvas.width = canvas.parentElement.clientWidth * 2;
-    canvas.height = canvas.parentElement.clientHeight * 2;
-    canvas.style.width = `${canvas.parentElement.clientWidth}px`;
-    canvas.style.height = `${canvas.parentElement.clientHeight}px`;
+    const parent = canvas.parentElement;
+    if (!parent) return;
 
-    const context = canvas.getContext('2d');
-    context.scale(2, 2);
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-    context.strokeStyle = color;
-    context.lineWidth = brushSize;
-    contextRef.current = context;
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width === 0 || height === 0) continue;
+
+        let tempImage = null;
+        try {
+          if (canvas.width > 0 && canvas.height > 0) {
+            tempImage = canvas.toDataURL();
+          }
+        } catch (e) {
+          console.warn("Could not backup canvas:", e);
+        }
+
+        canvas.width = width * 2;
+        canvas.height = height * 2;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+
+        const context = canvas.getContext('2d');
+        context.scale(2, 2);
+        context.lineCap = 'round';
+        context.lineJoin = 'round';
+        context.strokeStyle = color;
+        context.lineWidth = brushSize;
+        contextRef.current = context;
+
+        if (tempImage) {
+          const img = new Image();
+          img.onload = () => {
+            context.save();
+            context.setTransform(1, 0, 0, 1, 0, 0); // Reset scaling
+            context.drawImage(img, 0, 0, width * 2, height * 2);
+            context.restore(); // Restore context scale (2, 2)
+          };
+          img.src = tempImage;
+        }
+      }
+    });
+
+    resizeObserver.observe(parent);
 
     const handleDraw = (data) => {
       if (data.roomId !== roomId) return;
       const { x, y, lastX, lastY, color: remoteColor, size, type } = data;
       const ctx = contextRef.current;
+      if (!ctx) return;
+      ctx.save();
       ctx.beginPath();
       ctx.strokeStyle = remoteColor;
       ctx.lineWidth = size;
@@ -37,12 +72,15 @@ const WhiteboardPanel = ({ roomId, user }) => {
       ctx.moveTo(lastX, lastY);
       ctx.lineTo(x, y);
       ctx.stroke();
+      ctx.restore();
     };
 
     const handleClear = (data) => {
       if (data.roomId !== roomId) return;
       const ctx = contextRef.current;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
     };
 
     const handleCursor = (data) => {
@@ -58,6 +96,7 @@ const WhiteboardPanel = ({ roomId, user }) => {
     socket.on('whiteboard_cursor', handleCursor);
 
     return () => {
+      resizeObserver.disconnect();
       socket.off('draw', handleDraw);
       socket.off('clear_whiteboard', handleClear);
       socket.off('whiteboard_cursor', handleCursor);
@@ -73,8 +112,8 @@ const WhiteboardPanel = ({ roomId, user }) => {
 
   const startDrawing = ({ nativeEvent }) => {
     const { offsetX, offsetY } = nativeEvent;
-    contextRef.current.beginPath();
-    contextRef.current.moveTo(offsetX, offsetY);
+    contextRef.current.lastX = offsetX;
+    contextRef.current.lastY = offsetY;
     setIsDrawing(true);
   };
 
@@ -93,12 +132,16 @@ const WhiteboardPanel = ({ roomId, user }) => {
     const { offsetX, offsetY } = nativeEvent;
     const ctx = contextRef.current;
     
-    const lastX = ctx.lastX || offsetX;
-    const lastY = ctx.lastY || offsetY;
+    const lastX = ctx.lastX !== null ? ctx.lastX : offsetX;
+    const lastY = ctx.lastY !== null ? ctx.lastY : offsetY;
 
+    ctx.save();
+    ctx.beginPath();
     ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
+    ctx.moveTo(lastX, lastY);
     ctx.lineTo(offsetX, offsetY);
     ctx.stroke();
+    ctx.restore();
 
     socket.emit('draw', {
       roomId,
@@ -124,7 +167,6 @@ const WhiteboardPanel = ({ roomId, user }) => {
   };
 
   const stopDrawing = () => {
-    contextRef.current.closePath();
     contextRef.current.lastX = null;
     contextRef.current.lastY = null;
     setIsDrawing(false);
@@ -135,6 +177,17 @@ const WhiteboardPanel = ({ roomId, user }) => {
     const ctx = contextRef.current;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     socket.emit('clear_whiteboard', { roomId });
+  };
+
+  const handleClearClick = () => {
+    if (showClearConfirm) {
+      clearCanvas();
+      setShowClearConfirm(false);
+    } else {
+      setShowClearConfirm(true);
+      // Automatically cancel confirmation after 3 seconds
+      setTimeout(() => setShowClearConfirm(false), 3000);
+    }
   };
 
   return (
@@ -157,48 +210,63 @@ const WhiteboardPanel = ({ roomId, user }) => {
       <motion.div 
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        className="absolute top-10 left-10 flex flex-col items-center gap-6 p-4 bg-[#0a0b0d]/90 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] z-20"
+        className="absolute top-10 left-10 flex flex-col items-center gap-3 p-3 bg-[#0a0b0d]/90 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] z-20"
       >
         <div className="flex flex-col items-center gap-2 bg-white/[0.03] p-1.5 rounded-2xl border border-white/5">
-          <ToolButton active={tool === 'pen'} onClick={() => setTool('pen')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>} />
-          <ToolButton active={tool === 'eraser'} onClick={() => setTool('eraser')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>} />
+          {/* Option 1: Pen */}
+          <ToolButton 
+            active={tool === 'pen'} 
+            onClick={() => setTool('pen')} 
+            title="Pen Tool" 
+            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>} 
+          />
+
+          {/* Option 2: Eraser */}
+          <ToolButton 
+            active={tool === 'eraser'} 
+            onClick={() => setTool('eraser')} 
+            title="Eraser Tool" 
+            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 7L2 14v4h4l7-7m-4-4l5-5c1-1 3.5 1.5 2.5 2.5l-5 5m-2.5-2.5l2.5 2.5M12 22h10" /></svg>} 
+          />
+
+          {/* Option 3: Clear Button */}
+          <ToolButton 
+            active={showClearConfirm} 
+            onClick={handleClearClick} 
+            title={showClearConfirm ? "Confirm Clear?" : "Clear Board"} 
+            className={showClearConfirm ? 'bg-red-500/20 text-red-500 animate-pulse border border-red-500/30' : ''}
+            icon={showClearConfirm ? (
+              <svg className="w-5 h-5 text-red-500 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            ) : (
+              <svg className="w-5 h-5 text-gray-600 hover:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            )} 
+          />
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
-          {['#00F3FF', '#FF00C8', '#ffffff', '#22c55e', '#eab308', '#ef4444'].map(c => (
+        {/* Dynamic Divider */}
+        <div className="w-6 h-[1px] bg-white/10" />
+
+        {/* Premium 6-Color Palette Grid */}
+        <div className="grid grid-cols-2 gap-2 bg-white/[0.03] p-1.5 rounded-2xl border border-white/5">
+          {['#00F3FF', '#FF00C8', '#9D00FF', '#39FF14', '#FFE600', '#FFFFFF'].map(c => (
             <motion.button
               key={c}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.2 }}
+              whileTap={{ scale: 0.85 }}
               onClick={() => { setColor(c); setTool('pen'); }}
-              className={`w-5 h-5 rounded-full transition-all border-2 ${color === c && tool === 'pen' ? 'border-white scale-110 shadow-glow-cyan' : 'border-transparent'}`}
-              style={{ backgroundColor: c }}
+              className={`w-4 h-4 rounded-full transition-all border ${
+                color === c && tool === 'pen' 
+                  ? 'border-white scale-110 shadow-[0_0_10px_var(--glow-color)]' 
+                  : 'border-transparent hover:border-white/40'
+              }`}
+              style={{ 
+                backgroundColor: c,
+                '--glow-color': c 
+              }}
+              title={`Use ${c}`}
             />
           ))}
         </div>
-
-        <div className="flex flex-col items-center gap-3 bg-white/[0.03] p-3 rounded-2xl border border-white/5">
-          <div className="h-32 w-1 flex items-center justify-center relative">
-            <input 
-              type="range" 
-              min="1" max="40" 
-              value={brushSize} 
-              onChange={(e) => setBrushSize(parseInt(e.target.value))}
-              className="w-32 accent-white -rotate-90 absolute cursor-pointer"
-            />
-          </div>
-          <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest">{brushSize}PX</span>
-        </div>
-
-        <motion.button 
-          whileHover={{ scale: 1.1, rotate: 90 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={clearCanvas}
-          className="w-10 h-10 bg-cyber-pink/10 text-cyber-pink hover:bg-cyber-pink hover:text-black rounded-xl border border-cyber-pink/20 transition-all flex items-center justify-center"
-          title="PURGE BOARD"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
-        </motion.button>
       </motion.div>
 
       {/* Remote Cursors */}

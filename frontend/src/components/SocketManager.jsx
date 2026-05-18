@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import socket from '../services/socket';
 import useAuthStore from '../store/authStore';
 import useFriendStore from '../store/friendStore';
+import useNotificationStore from '../store/notificationStore';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,6 +14,7 @@ const SocketManager = () => {
     fetchFriends, 
     fetchFriendRequests 
   } = useFriendStore();
+  const { fetchNotifications } = useNotificationStore();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -24,6 +26,7 @@ const SocketManager = () => {
       // Fetch initial data
       fetchFriends();
       fetchFriendRequests();
+      fetchNotifications();
     }
 
     if (!token && socket.connected) {
@@ -50,12 +53,12 @@ const SocketManager = () => {
     const handleRoomInvite = (data) => {
       showToast(
         <div className="flex flex-col gap-2">
-          <p><span className="font-bold text-primary-400">{data.sender.displayName || data.sender.name}</span> invited you to join <span className="font-bold text-indigo-400">{data.roomName}</span></p>
+          <p><span className="font-bold text-gray-900">{data.sender.displayName || data.sender.name}</span> invited you to join <span className="font-bold text-[#8b5cf6]">{data.roomName}</span></p>
           <button 
             onClick={() => navigate(`/room/${data.roomId}`)}
-            className="bg-primary-600 hover:bg-primary-500 text-[10px] font-black uppercase tracking-widest py-2 rounded-lg transition-all"
+            className="bg-[#8b5cf6] hover:bg-[#7c3aed] text-white text-xs font-bold uppercase tracking-widest py-3 rounded-xl transition-all shadow-sm"
           >
-            Accept Mission
+            Join Room
           </button>
         </div>,
         'info',
@@ -67,11 +70,16 @@ const SocketManager = () => {
       fetchFriends();
     };
 
+    const handleNewNotification = () => {
+      fetchNotifications();
+    };
+
     socket.on('new_friend_request', handleNewFriendRequest);
     socket.on('friend_request_update', handleFriendRequestUpdate);
     socket.on('friend_status_change', handleStatusChange);
     socket.on('room_invite', handleRoomInvite);
     socket.on('refresh_friends', handleRefreshFriends);
+    socket.on('new_notification', handleNewNotification);
 
     return () => {
       socket.off('new_friend_request', handleNewFriendRequest);
@@ -79,8 +87,9 @@ const SocketManager = () => {
       socket.off('friend_status_change', handleStatusChange);
       socket.off('room_invite', handleRoomInvite);
       socket.off('refresh_friends', handleRefreshFriends);
+      socket.off('new_notification', handleNewNotification);
     };
-  }, [token, addIncomingRequest, updateOnlineStatus, fetchFriends, fetchFriendRequests, showToast, navigate]);
+  }, [token, addIncomingRequest, updateOnlineStatus, fetchFriends, fetchFriendRequests, fetchNotifications, showToast, navigate]);
 
   return null; // This component doesn't render anything
 };

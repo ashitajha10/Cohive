@@ -7,11 +7,20 @@ export default defineConfig({
   plugins: [
     react(),
     nodePolyfills({
+      globals: {
+        Buffer: true,
+        global: true,
+        process: true,
+      },
       // Whether to polyfill `node:` protocol imports.
       protocolImports: true,
     }),
   ],
   define: {
     global: 'window',
+  },
+  server: {
+    port: 5173,
+    strictPort: true,
   },
 })

@@ -1,4 +1,5 @@
 import React from 'react';
+import { BACKEND_URL } from '../services/api';
 
 const ResourceCard = ({ resource, onDelete, canDelete }) => {
   const uploaderName = resource.uploadedBy?.displayName || resource.uploadedBy?.name || "System";
@@ -33,7 +34,10 @@ const ResourceCard = ({ resource, onDelete, canDelete }) => {
   };
 
   const handleOpen = () => {
-    window.open(resource.url, '_blank', 'noopener,noreferrer');
+    const targetUrl = resource.url.startsWith('/') 
+      ? `${BACKEND_URL}${resource.url}` 
+      : resource.url;
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -42,8 +46,16 @@ const ResourceCard = ({ resource, onDelete, canDelete }) => {
       <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-cyber-pink/10 rounded-full blur-[40px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
       
       <div className="flex items-start gap-5 relative z-10">
-        <div className="w-14 h-14 bg-[#050608] rounded-2xl flex items-center justify-center flex-shrink-0 border border-white/10 group-hover:border-cyber-cyan/30 group-hover:shadow-[0_0_20px_-5px_rgba(0,243,255,0.4)] transition-all duration-500">
-          {getIcon()}
+        <div className="w-14 h-14 bg-[#050608] rounded-2xl flex items-center justify-center flex-shrink-0 border border-white/10 group-hover:border-cyber-cyan/30 group-hover:shadow-[0_0_20px_-5px_rgba(0,243,255,0.4)] transition-all duration-500 overflow-hidden">
+          {resource.type === 'image' ? (
+            <img 
+              src={resource.url.startsWith('/') ? `${BACKEND_URL}${resource.url}` : resource.url} 
+              className="w-full h-full object-cover" 
+              alt={resource.title} 
+            />
+          ) : (
+            getIcon()
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-black text-white truncate group-hover:text-cyber-cyan transition-colors uppercase tracking-tight" title={resource.title}>

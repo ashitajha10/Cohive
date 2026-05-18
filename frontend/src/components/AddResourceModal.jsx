@@ -3,6 +3,7 @@ import Button from './Button';
 import Card from './Card';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { motion } from 'framer-motion';
 
 const AddResourceModal = ({ isOpen, onClose, roomId, onResourceAdded }) => {
   const [activeMode, setActiveMode] = useState('link'); // link, upload
@@ -36,7 +37,15 @@ const AddResourceModal = ({ isOpen, onClose, roomId, onResourceAdded }) => {
         });
         
         resourceData.url = uploadRes.data.url;
-        resourceData.type = file.type.includes('pdf') ? 'pdf' : 'image';
+        
+        if (file.type.includes('pdf')) {
+          resourceData.type = 'pdf';
+        } else if (file.type.startsWith('image/')) {
+          resourceData.type = 'image';
+        } else {
+          throw new Error('Unsupported file format. Please upload a PDF or an Image.');
+        }
+
         if (!title) resourceData.title = file.name;
       }
 

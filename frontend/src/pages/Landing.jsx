@@ -4,6 +4,7 @@ import { motion, useScroll, useTransform, useInView } from 'framer-motion';
 import Button from '../components/Button';
 import useAuthStore from '../store/authStore';
 import { LANDING_STATS } from '../utils/constants';
+import Logo from '../components/Logo';
 
 const AnimatedCounter = ({ value, suffix = '' }) => {
   return (
@@ -111,16 +112,12 @@ const Landing = () => {
         transition={{ duration: 0.6 }}
         className="relative z-50 flex items-center justify-between px-6 md:px-16 py-8 max-w-7xl mx-auto"
       >
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          className="flex items-center gap-3 cursor-pointer"
+        <div
+          className="cursor-pointer"
           onClick={() => navigate('/')}
         >
-          <div className="w-10 h-10 bg-gradient-to-br from-cyber-cyan to-cyber-grey-900 rounded-2xl flex items-center justify-center shadow-glow-cyan border border-white/20">
-            <span className="font-black text-xl text-black">C</span>
-          </div>
-          <span className="text-2xl font-black tracking-tighter uppercase glow-text-cyan">Cohive</span>
-        </motion.div>
+          <Logo variant="cosmic" size="md" showText={true} />
+        </div>
 
         <div className="flex items-center gap-4">
           <motion.button
@@ -386,12 +383,7 @@ const Landing = () => {
       {/* Footer */}
       <footer className="relative z-10 px-6 py-12 border-t border-white/5">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-cyber-cyan to-cyber-grey-900 rounded-xl flex items-center justify-center shadow-glow-cyan border border-white/10">
-              <span className="font-black text-sm text-black">C</span>
-            </div>
-            <span className="text-lg font-black tracking-tighter uppercase">Cohive</span>
-          </div>
+          <Logo variant="cosmic" size="sm" showText={true} />
           <div className="flex items-center gap-10 text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
             <a href="#" className="hover:text-cyber-cyan transition-colors">Privacy</a>
             <a href="#" className="hover:text-cyber-cyan transition-colors">Terms</a>

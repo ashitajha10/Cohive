@@ -8,7 +8,7 @@ router.get("/:roomId/messages", auth, async (req, res) => {
     const messages = await Message.find({
       roomId: req.params.roomId,
     })
-      .populate("sender", "name email")
+      .populate("sender", "name email avatar displayName")
       .sort({ createdAt: 1 });
 
     res.json(messages);

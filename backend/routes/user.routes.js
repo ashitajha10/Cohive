@@ -6,6 +6,8 @@ const router = express.Router();
 
 router.get('/me', authMiddleware, userController.getMe);
 router.put('/profile', authMiddleware, userController.updateProfile);
+router.put('/change-password', authMiddleware, userController.changePassword);
+router.delete('/delete-account', authMiddleware, userController.deleteAccount);
 
 // Friend System Routes
 router.get('/search', authMiddleware, userController.searchUsers);

@@ -272,3 +272,45 @@ exports.cancelFriendRequest = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+exports.changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  try {
+    // We need to select password because it might be unselected by default in the model
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    if (user.authProvider === 'google' && !user.password) {
+      return res.status(400).json({ message: 'Account uses Google Sign-In. Password change not supported.' });
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) return res.status(400).json({ message: 'Incorrect current password' });
+
+    user.password = newPassword;
+    await user.save();
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.deleteAccount = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Remove user
+    await User.findByIdAndDelete(req.user.id);
+    
+    // Cleanup relationships
+    await User.updateMany({ friends: req.user.id }, { $pull: { friends: req.user.id } });
+    await FriendRequest.deleteMany({ $or: [{ sender: req.user.id }, { receiver: req.user.id }] });
+
+    res.json({ message: 'Account deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};

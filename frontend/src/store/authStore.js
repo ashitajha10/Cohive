@@ -4,12 +4,12 @@ import socket from '../services/socket';
 
 const useAuthStore = create((set, get) => ({
   user: null,
-  token: localStorage.getItem('token') || null,
-  loading: !!localStorage.getItem('token'),
+  token: sessionStorage.getItem('token') || null,
+  loading: !!sessionStorage.getItem('token'),
 
   setAuth: (token) => {
-    localStorage.setItem('token', token);
-    set({ token });
+    sessionStorage.setItem('token', token);
+    set({ token, loading: true });
   },
 
   setUser: (user) => set({ user, loading: false }),
@@ -20,12 +20,13 @@ const useAuthStore = create((set, get) => ({
       set({ loading: false });
       return;
     }
+    set({ loading: true });
     try {
       const res = await api.get('/user/me');
       set({ user: res.data, loading: false });
     } catch (err) {
       console.error('Fetch user failed:', err);
-      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
       set({ user: null, token: null, loading: false });
     }
   },
@@ -51,7 +52,7 @@ const useAuthStore = create((set, get) => ({
   login: async (credentials) => {
     try {
       const res = await api.post('/auth/login', credentials);
-      localStorage.setItem('token', res.data.token);
+      sessionStorage.setItem('token', res.data.token);
       set({ token: res.data.token, user: res.data.user });
       return { success: true };
     } catch (err) {
@@ -62,7 +63,7 @@ const useAuthStore = create((set, get) => ({
   register: async (userData) => {
     try {
       const res = await api.post('/auth/register', userData);
-      localStorage.setItem('token', res.data.token);
+      sessionStorage.setItem('token', res.data.token);
       set({ token: res.data.token, user: res.data.user });
       return { success: true };
     } catch (err) {
@@ -82,7 +83,7 @@ const useAuthStore = create((set, get) => ({
   resetPassword: async (token, password) => {
     try {
       const res = await api.post('/auth/reset-password', { token, password });
-      localStorage.setItem('token', res.data.token);
+      sessionStorage.setItem('token', res.data.token);
       set({ token: res.data.token, user: res.data.user });
       return { success: true, message: res.data.message };
     } catch (err) {
@@ -95,9 +96,28 @@ const useAuthStore = create((set, get) => ({
     if (socket.connected) {
       socket.disconnect();
     }
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
     set({ user: null, token: null });
     window.location.href = '/';
+  },
+
+  changePassword: async (currentPassword, newPassword) => {
+    try {
+      const res = await api.put('/user/change-password', { currentPassword, newPassword });
+      return { success: true, message: res.data.message };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.message || 'Password change failed' };
+    }
+  },
+
+  deleteAccount: async () => {
+    try {
+      const res = await api.delete('/user/delete-account');
+      get().logout();
+      return { success: true, message: res.data.message };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.message || 'Account deletion failed' };
+    }
   },
 }));
 

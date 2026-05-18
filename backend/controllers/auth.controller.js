@@ -1,4 +1,5 @@
 const { generateToken } = require('../services/token.service');
+const { sendResetEmail } = require('../services/email.service');
 const User = require('../models/User');
 const crypto = require('crypto');
 
@@ -82,12 +83,16 @@ const forgotPassword = async (req, res) => {
 
     await user.save();
 
-    // In a real production app, we would send an email here.
-    // For this implementation, we will return the token so the UI can use it.
+    // Construct the reset link using configured Frontend URL
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetLink = `${frontendUrl}/reset-password/${resetToken}`;
+
+    // Dispatch the actual email (with fallback if SMTP is unconfigured)
+    await sendResetEmail(user.email, resetLink);
+
     res.json({ 
       success: true, 
-      message: 'Reset token generated (Simulated email sent)',
-      resetToken // In production, this would only be in the email link
+      message: 'Reset link sent to your email account'
     });
   } catch (err) {
     console.error('Forgot password error:', err);

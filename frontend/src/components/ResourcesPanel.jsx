@@ -28,7 +28,11 @@ const ResourcesPanel = ({ roomId, user, room }) => {
 
     const handleNewResource = (resource) => {
       if (resource.roomId === roomId) {
-        setResources(prev => [resource, ...prev]);
+        // Prevent duplicate rendering if we uploaded it ourselves
+        setResources(prev => {
+          if (prev.some(r => r._id === resource._id)) return prev;
+          return [resource, ...prev];
+        });
         showToast("New data uplink received", "info");
       }
     };
@@ -37,11 +41,11 @@ const ResourcesPanel = ({ roomId, user, room }) => {
       setResources(prev => prev.filter(r => r._id !== resourceId));
     };
 
-    socket.on('new_resource', handleNewResource);
+    socket.on('resource_added', handleNewResource);
     socket.on('resource_deleted', handleDeletedResource);
 
     return () => {
-      socket.off('new_resource', handleNewResource);
+      socket.off('resource_added', handleNewResource);
       socket.off('resource_deleted', handleDeletedResource);
     };
   }, [roomId]);
@@ -49,6 +53,8 @@ const ResourcesPanel = ({ roomId, user, room }) => {
   const handleDelete = async (resourceId) => {
     try {
       await api.delete(`/resources/${resourceId}`);
+      setResources(prev => prev.filter(r => r._id !== resourceId));
+      socket.emit('resource_deleted', { roomId, resourceId });
       showToast("Data purged successfully", "success");
     } catch (err) {
       showToast("Data purge failure", "error");
@@ -126,7 +132,10 @@ const ResourcesPanel = ({ roomId, user, room }) => {
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)} 
         roomId={roomId} 
-        onSuccess={fetchResources}
+        onResourceAdded={(newResource) => {
+          setResources(prev => [newResource, ...prev]);
+          socket.emit('resource_added', { roomId, resource: newResource });
+        }}
       />
     </div>
   );

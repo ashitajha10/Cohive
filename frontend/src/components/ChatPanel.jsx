@@ -1,160 +1,146 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getAvatarUrl } from "../utils/avatar";
 
-const ChatPanel = ({ messages, user, message, setMessage, sendMessage, typingUser, isUploading, handleFileUpload, messagesEndRef, roomId }) => {
+const ChatPanel = ({ 
+  messages, 
+  user, 
+  message, 
+  setMessage, 
+  sendMessage, 
+  typingUser, 
+  isUploading, 
+  handleFileUpload, 
+  messagesEndRef,
+  roomId 
+}) => {
+  const formatMessageDate = (dateString) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return "Today";
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    } else {
+      return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+  };
+
   return (
-    <div className="flex-1 flex flex-col min-h-0 glass-panel rounded-[2.5rem] border-white/10 relative overflow-hidden bg-[#050608]/40 shadow-2xl">
-      {/* Chat Header */}
-      <div className="px-8 py-5 border-b border-white/5 flex items-center justify-between bg-white/[0.02] backdrop-blur-xl">
-        <div>
-          <h3 className="text-[10px] font-black text-cyber-cyan uppercase tracking-[0.4em] flex items-center gap-2.5">
-            <div className="w-2 h-2 rounded-full bg-cyber-cyan shadow-glow-cyan animate-pulse" />
-            Neural Link.01
-          </h3>
-          <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest mt-1">Encrypted Channel // active</p>
+    <div className="room-chat-panel flex-1 bg-gradient-to-br from-purple-50 via-fuchsia-50/20 to-violet-100/40 rounded-[2.5rem] border border-purple-100/40 shadow-sm flex flex-col min-h-0 overflow-hidden relative">
+      {/* Header */}
+      <div className="p-8 border-b border-purple-100/20 bg-transparent flex items-center justify-between shrink-0">
+        <h3 className="text-xl font-bold text-gray-900 uppercase tracking-tight">Room Chat</h3>
+        <div className="flex items-center gap-2 px-3 py-1 bg-green-50 rounded-full">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-[10px] font-bold text-green-600 uppercase tracking-widest">Live</span>
         </div>
-        
-        <AnimatePresence>
-          {typingUser && (
-            <motion.div 
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 5 }}
-              className="flex items-center gap-3 px-3 py-1 bg-cyber-cyan/5 rounded-full border border-cyber-cyan/10"
-            >
-              <span className="text-[8px] font-black text-cyber-cyan uppercase tracking-widest">{typingUser} TYPING</span>
-              <div className="flex gap-1">
-                <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1 h-1 bg-cyber-cyan rounded-full" />
-                <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-1 h-1 bg-cyber-cyan rounded-full" />
-                <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1 h-1 bg-cyber-cyan rounded-full" />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar scroll-smooth">
-        <AnimatePresence mode="popLayout">
-          {messages.map((msg, index) => {
-            const isMe = msg.user?._id === user?._id || msg.userId === user?._id;
-            const isSystem = msg.type === 'system';
-            
-            if (isSystem) {
-              return (
-                <motion.div 
-                  key={msg._id || index}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex justify-center"
-                >
-                  <div className="px-5 py-2 bg-white/[0.03] rounded-full border border-white/5 backdrop-blur-md">
-                    <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.3em]">{msg.message}</p>
-                  </div>
-                </motion.div>
-              );
-            }
+      <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-transparent flex flex-col min-h-0">
+        {messages.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 my-auto">
+            <div className="w-16 h-16 rounded-3xl bg-purple-50 flex items-center justify-center mb-4 text-[#8b5cf6] border border-purple-100 shadow-sm shadow-purple-50">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
+            <h4 className="text-sm font-black text-gray-900 uppercase tracking-wider">No Messages Yet</h4>
+            <p className="text-[10px] font-semibold text-gray-400 mt-1 max-w-[200px] leading-relaxed">Send a chat message or share a file to start collaborating with your team!</p>
+          </div>
+        ) : (
+          <AnimatePresence initial={false}>
+            {messages.map((msg, idx) => {
+              const isMe = msg.sender?._id === user?._id || msg.sender === user?._id;
+              const prevMsg = idx > 0 ? messages[idx - 1] : null;
+              const currentDateStr = new Date(msg.createdAt).toDateString();
+              const prevDateStr = prevMsg ? new Date(prevMsg.createdAt).toDateString() : null;
+              const showDivider = currentDateStr !== prevDateStr;
 
-            return (
-              <motion.div
-                key={msg._id || index}
-                initial={{ opacity: 0, x: isMe ? 20 : -20, y: 10 }}
-                animate={{ opacity: 1, x: 0, y: 0 }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
-              >
-                <div className={`flex gap-4 max-w-[90%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className="flex-shrink-0 relative group">
-                    <div className={`w-9 h-9 rounded-2xl p-[1px] bg-gradient-to-br ${isMe ? 'from-cyber-cyan to-transparent' : 'from-gray-700 to-transparent'} group-hover:scale-105 transition-transform`}>
-                      <div className="w-full h-full bg-[#0a0b0d] rounded-[15px] overflow-hidden">
-                        <img src={getAvatarUrl(msg.user?.avatar)} className="w-full h-full object-cover" alt="" />
-                      </div>
+              return (
+                <React.Fragment key={msg._id || idx}>
+                  {showDivider && (
+                    <div className="flex items-center justify-center my-6 shrink-0 w-full">
+                      <div className="h-[1px] bg-purple-100/30 flex-1"></div>
+                      <span className="px-4 py-1.5 bg-white/50 backdrop-blur-sm border border-purple-100/20 rounded-full text-[9px] font-black text-purple-600 uppercase tracking-widest mx-4 select-none">
+                        {formatMessageDate(msg.createdAt)}
+                      </span>
+                      <div className="h-[1px] bg-purple-100/30 flex-1"></div>
                     </div>
-                  </div>
-                  
-                  <div className={`flex flex-col gap-1.5 ${isMe ? 'items-end' : 'items-start'}`}>
-                    <div className="flex items-center gap-3 px-1">
-                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{msg.user?.displayName || msg.user?.name}</span>
-                      <span className="text-[7px] font-black text-gray-700 uppercase tracking-widest">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
+                  )}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} w-full`}
+                  >
+                    {!isMe && (
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-2">
+                        {msg.sender?.displayName || msg.sender?.name || 'User'} • {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                    {isMe && (
+                      <span className="text-[10px] font-bold text-[#8b5cf6] uppercase tracking-widest mb-1.5 mr-2">
+                        YOU • {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
                     
-                    <div className={`px-6 py-4 rounded-[1.5rem] relative group ${
+                    <div className={`max-w-[85%] px-6 py-4 rounded-3xl text-sm font-medium shadow-sm leading-relaxed ${
                       isMe 
-                        ? 'bg-cyber-cyan text-black rounded-tr-none shadow-glow-cyan' 
-                        : 'bg-white/[0.03] border border-white/10 text-gray-200 rounded-tl-none'
+                        ? 'bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] text-white rounded-tr-none' 
+                        : 'bg-white border border-purple-100/20 text-gray-800 rounded-tl-none'
                     }`}>
                       {msg.type === 'file' ? (
-                        <a href={msg.file} target="_blank" rel="noreferrer" className="flex items-center gap-4 group/file">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${isMe ? 'bg-black/10' : 'bg-white/5'}`}>
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-black uppercase tracking-widest block">Data Packet</span>
-                            <span className={`text-[8px] font-black uppercase opacity-60`}>Download Link</span>
-                          </div>
+                        <a href={msg.file} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 hover:underline">
+                          <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                          <span className="truncate max-w-[200px]">{msg.file.split('/').pop()}</span>
                         </a>
                       ) : (
-                        <p className={`text-sm leading-relaxed ${isMe ? 'font-black' : 'font-medium'}`}>{msg.message}</p>
+                        msg.text
                       )}
                     </div>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+                  </motion.div>
+                </React.Fragment>
+              );
+            })}
+          </AnimatePresence>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="p-8 bg-white/[0.02] backdrop-blur-2xl border-t border-white/5">
-        <div className="flex items-center gap-4">
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => document.getElementById('chat-file-upload').click()}
-            disabled={isUploading}
-            className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center text-gray-500 hover:text-cyber-cyan hover:border-cyber-cyan/40 transition-all flex-shrink-0"
-          >
-            {isUploading ? (
-              <div className="w-5 h-5 border-2 border-cyber-cyan border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
-            )}
-          </motion.button>
-          
-          <input 
-            type="file" 
-            id="chat-file-upload" 
-            className="hidden" 
-            onChange={handleFileUpload} 
-          />
-          
-          <div className="flex-1 relative group">
-            <input 
-              type="text" 
-              placeholder="ENCODE MESSAGE..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-8 py-5 text-sm font-black text-white placeholder:text-gray-800 focus:outline-none focus:border-cyber-cyan/40 transition-all tracking-[0.1em]"
-            />
-            <motion.button 
-              whileHover={{ scale: 1.1, x: -5 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={sendMessage}
-              disabled={!message.trim()}
-              className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-white text-black flex items-center justify-center shadow-2xl disabled:opacity-20 hover:bg-cyber-cyan transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-            </motion.button>
-          </div>
+      {/* Typing Indicator */}
+      {typingUser && (
+        <div className="px-8 py-2 text-[10px] font-bold text-[#8b5cf6] uppercase tracking-widest bg-white/20 backdrop-blur-sm animate-pulse">
+          {typingUser} is typing...
         </div>
-      </div>
+      )}
+
+      {/* Input Area */}
+      <form onSubmit={sendMessage} className="p-6 bg-transparent border-t border-purple-100/20 flex items-center gap-4">
+        <div className="relative flex-1 group">
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Type a message..."
+            className="w-full bg-white/90 border border-purple-100/20 rounded-2xl px-6 py-4 text-sm font-medium text-gray-800 focus:outline-none focus:border-purple-200 focus:bg-white transition-all placeholder:text-gray-400"
+          />
+          <label className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-purple-500 cursor-pointer">
+            <input type="file" onChange={handleFileUpload} className="hidden" />
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+          </label>
+        </div>
+        <button
+          type="submit"
+          className="p-4 bg-[#8b5cf6] text-white rounded-2xl hover:bg-[#7c3aed] transition-all shadow-lg shadow-purple-100 flex items-center justify-center shrink-0"
+        >
+          <svg className="w-5 h-5 transform rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+        </button>
+      </form>
     </div>
   );
 };
-
 
 export default ChatPanel;

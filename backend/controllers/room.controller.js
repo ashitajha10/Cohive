@@ -1,5 +1,8 @@
 const Room = require("../models/room");
 const Message = require("../models/Message");
+const Note = require("../models/Note");
+const Resource = require("../models/Resource");
+const Whiteboard = require("../models/Whiteboard");
 
 const createRoom = async (req, res) => {
   console.log("DEBUG: Room creation body:", req.body);
@@ -78,13 +81,18 @@ const deleteRoom = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to delete this room" });
     }
 
-    // Delete associated messages
-    await Message.deleteMany({ roomId: room._id });
+    // Delete all associated data
+    await Promise.all([
+      Message.deleteMany({ roomId: room._id }),
+      Note.deleteMany({ roomId: room._id }),
+      Resource.deleteMany({ roomId: room._id }),
+      Whiteboard.deleteMany({ roomId: room._id })
+    ]);
 
     // Delete the room
     await room.deleteOne();
 
-    res.json({ message: "Room deleted" });
+    res.json({ message: "Room deleted completely" });
   } catch (err) {
     console.error("Delete room error:", err);
     res.status(500).json({ message: "Server error" });
@@ -103,7 +111,12 @@ const leaveRoom = async (req, res) => {
 
     // Auto-delete if empty
     if (room.members.length === 0) {
-      await Message.deleteMany({ roomId: room._id });
+      await Promise.all([
+        Message.deleteMany({ roomId: room._id }),
+        Note.deleteMany({ roomId: room._id }),
+        Resource.deleteMany({ roomId: room._id }),
+        Whiteboard.deleteMany({ roomId: room._id })
+      ]);
       await room.deleteOne();
       return res.json({ message: "Room deleted as it was empty" });
     }

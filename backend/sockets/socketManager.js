@@ -76,6 +76,7 @@ const socketManager = (server) => {
           avatar: socket.user.avatar
         }
       });
+      io.to(`user_${receiverId}`).emit("new_notification");
     });
 
     socket.on("friend_request_responded", ({ senderId, status }) => {
@@ -88,6 +89,7 @@ const socketManager = (server) => {
         // Both users are now friends, notify both to refresh friend lists
         io.to(`user_${userId}`).emit("refresh_friends");
         io.to(`user_${senderId}`).emit("refresh_friends");
+        io.to(`user_${senderId}`).emit("new_notification");
       }
     });
 
@@ -111,6 +113,8 @@ const socketManager = (server) => {
         type: 'room_invite',
         data: { roomId, roomName }
       });
+      
+      io.to(`user_${friendId}`).emit("new_notification");
     });
 
     socket.on("join_room", async ({ roomId }) => {
@@ -246,15 +250,11 @@ const socketManager = (server) => {
     });
 
     socket.on("resource_added", (data) => {
-      if (socket.rooms.has(data.roomId)) {
-        socket.to(data.roomId).emit("resource_added", data.resource);
-      }
+      socket.to(data.roomId).emit("resource_added", data.resource);
     });
 
     socket.on("resource_deleted", (data) => {
-      if (socket.rooms.has(data.roomId)) {
-        socket.to(data.roomId).emit("resource_deleted", data.resourceId);
-      }
+      socket.to(data.roomId).emit("resource_deleted", data.resourceId);
     });
 
     socket.on("note_created", (data) => {
@@ -275,15 +275,21 @@ const socketManager = (server) => {
       }
     });
 
-    socket.on("draw_event", (data) => {
+    socket.on("draw", (data) => {
       if (socket.rooms.has(data.roomId)) {
-        socket.to(data.roomId).emit("draw_event", data.drawData);
+        socket.to(data.roomId).emit("draw", data);
       }
     });
 
     socket.on("clear_whiteboard", (data) => {
       if (socket.rooms.has(data.roomId)) {
-        socket.to(data.roomId).emit("clear_whiteboard");
+        socket.to(data.roomId).emit("clear_whiteboard", data);
+      }
+    });
+
+    socket.on("whiteboard_cursor", (data) => {
+      if (socket.rooms.has(data.roomId)) {
+        socket.to(data.roomId).emit("whiteboard_cursor", data);
       }
     });
 
@@ -311,6 +317,37 @@ const socketManager = (server) => {
       }
     });
 
+    // Direct Messaging Sockets
+    socket.on("send_direct_message", async (data) => {
+      try {
+        const { receiverId, message, type, file } = data;
+        if (!receiverId || (!message && !file)) return;
+
+        const DirectMessage = require("../models/DirectMessage");
+
+        const newDM = await DirectMessage.create({
+          sender: socket.user._id,
+          receiver: receiverId,
+          text: message || "",
+          file: file || "",
+          type: type || "text",
+        });
+
+        const populatedDM = await newDM.populate("sender receiver", "name avatar displayName status");
+        const dmObj = populatedDM.toObject();
+
+        // Emit to receiver's socket room user_${receiverId}
+        io.to(`user_${receiverId}`).emit("receive_direct_message", dmObj);
+        
+        // Emit to sender's own socket room user_${userId} to sync across multiple tabs/devices
+        io.to(`user_${userId}`).emit("receive_direct_message", dmObj);
+
+        console.log(`DEBUG: Direct message sent from ${socket.user.name} to ${receiverId}`);
+      } catch (err) {
+        console.error("Direct Message socket send error:", err);
+      }
+    });
+
     // Check online status
     socket.on("check_online_status", (userIds, callback) => {
       const statusMap = {};
@@ -322,46 +359,40 @@ const socketManager = (server) => {
 
     // WebRTC Signaling - Multi-user Support
     socket.on("join_video_call", ({ roomId }) => {
-      if (socket.rooms.has(roomId)) {
-        // Broadcast to others that a new user is ready for video
-        socket.to(roomId).emit("user_joined_video", { 
-          socketId: socket.id, 
-          user: {
-            _id: socket.user._id,
-            name: socket.user.name,
-            displayName: socket.user.displayName,
-            avatar: socket.user.avatar
-          }
-        });
-      }
+      // Broadcast to others that a new user is ready for video
+      socket.to(roomId).emit("user_joined_video", { 
+        socketId: socket.id, 
+        user: {
+          _id: socket.user._id,
+          name: socket.user.name,
+          displayName: socket.user.displayName,
+          avatar: socket.user.avatar
+        }
+      });
     });
 
     socket.on("webrtc_signal", (data) => {
-      const { targetSocketId, signal, type, roomId } = data;
-      if (socket.rooms.has(roomId)) {
-        io.to(targetSocketId).emit("webrtc_signal", {
-          type,
-          signal,
-          fromSocketId: socket.id,
-          user: {
-            _id: socket.user._id,
-            name: socket.user.name,
-            displayName: socket.user.displayName,
-            avatar: socket.user.avatar
-          }
-        });
-      }
+      const { targetSocketId, signal, type } = data;
+      io.to(targetSocketId).emit("webrtc_signal", {
+        type,
+        signal,
+        fromSocketId: socket.id,
+        user: {
+          _id: socket.user._id,
+          name: socket.user.name,
+          displayName: socket.user.displayName,
+          avatar: socket.user.avatar
+        }
+      });
     });
 
     socket.on("media_state_change", (data) => {
       const { roomId, type, enabled } = data;
-      if (socket.rooms.has(roomId)) {
-        socket.to(roomId).emit("user_media_state_changed", {
-          socketId: socket.id,
-          type, // 'audio', 'video', 'screen'
-          enabled
-        });
-      }
+      socket.to(roomId).emit("user_media_state_changed", {
+        socketId: socket.id,
+        type, // 'audio', 'video', 'screen'
+        enabled
+      });
     });
 
     socket.on("disconnect", async () => {

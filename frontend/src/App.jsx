@@ -13,6 +13,7 @@ import ProfileSettings from "./pages/ProfileSettings";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Friends from "./pages/Friends";
+import MyRooms from "./pages/MyRooms";
 import Notifications from "./pages/Notifications";
 import Messages from "./pages/Messages";
 import Resources from "./pages/Resources";
@@ -23,7 +24,18 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import SocketManager from "./components/SocketManager";
 
 function App() {
-  const { fetchUser, token } = useAuthStore();
+  const { fetchUser, token, setAuth } = useAuthStore();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    
+    if (urlToken) {
+      setAuth(urlToken);
+      // Remove token from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [setAuth]);
 
   useEffect(() => {
     if (token) {
@@ -43,6 +55,7 @@ function App() {
         <Route path="/reset-password/:token" element={<ResetPassword />} />
 
         {/* Protected Routes */}
+        <Route path="/my-rooms" element={<ProtectedRoute><MyRooms /></ProtectedRoute>} />
         <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />

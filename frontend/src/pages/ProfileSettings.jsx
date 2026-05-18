@@ -5,13 +5,11 @@ import useAuthStore from '../store/authStore';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import Layout from '../components/Layout';
-import Card from '../components/Card';
-import Button from '../components/Button';
 import Loader from '../components/Loader';
 import { getAvatarUrl } from '../utils/avatar';
 
 const ProfileSettings = () => {
-  const { user, updateProfile, loading } = useAuthStore();
+  const { user, updateProfile, loading, logout, changePassword, deleteAccount } = useAuthStore();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -27,6 +25,9 @@ const ProfileSettings = () => {
 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [passForm, setPassForm] = useState({ currentPassword: '', newPassword: '' });
+  const [savingPass, setSavingPass] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -47,30 +48,24 @@ const ProfileSettings = () => {
   };
 
   const handleAvatarClick = () => {
+    if (!isEditing) return;
     fileInputRef.current.click();
   };
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    if (file.size > 2 * 1024 * 1024) {
-      showToast("File is too large (max 2MB)", "error");
-      return;
-    }
-
+    setUploading(true);
     const uploadData = new FormData();
     uploadData.append('file', file);
-
-    setUploading(true);
     try {
       const res = await api.post('/upload', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setFormData(prev => ({ ...prev, avatar: res.data.url }));
-      showToast("Avatar uplink successful", "success");
+      showToast("Avatar updated", "success");
     } catch (err) {
-      showToast("Avatar uplink failed", "error");
+      showToast("Avatar update failed", "error");
     } finally {
       setUploading(false);
     }
@@ -81,75 +76,92 @@ const ProfileSettings = () => {
     setSaving(true);
     const result = await updateProfile(formData);
     if (result.success) {
-      showToast("Profile identity updated", "success");
+      showToast("Profile updated successfully", "success");
+      setIsEditing(false);
     } else {
       showToast(result.error, "error");
     }
     setSaving(false);
   };
 
-  if (loading && !user) return <Loader />;
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!passForm.currentPassword || !passForm.newPassword) {
+      return showToast("Please fill both password fields", "error");
+    }
+    setSavingPass(true);
+    const result = await changePassword(passForm.currentPassword, passForm.newPassword);
+    if (result.success) {
+      showToast(result.message || "Password updated successfully", "success");
+      setPassForm({ currentPassword: '', newPassword: '' });
+    } else {
+      showToast(result.error, "error");
+    }
+    setSavingPass(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (window.confirm("Are you absolutely sure you want to delete your account? This action cannot be undone.")) {
+      const result = await deleteAccount();
+      if (result.success) {
+        showToast("Account deleted successfully", "success");
+      } else {
+        showToast(result.error, "error");
+      }
+    }
+  };
+
+  if (loading && !user) return <Layout><div className="flex items-center justify-center h-full"><Loader size="xl" /></div></Layout>;
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-12 min-h-[calc(100vh-120px)] flex flex-col">
-        <header className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-700">
-          <h1 className="text-5xl font-black text-white uppercase tracking-tighter">
-            Profile <span className="glow-text-cyan">Settings.v2</span>
-          </h1>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-500 font-black tracking-[0.4em] text-[10px] uppercase">Identity Management Terminal</span>
-            <div className="h-px flex-1 bg-white/5" />
-          </div>
+      <div className="max-w-4xl mx-auto space-y-10 animate-fade-in pb-20">
+        <header>
+          <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-2">Account Settings</h1>
+          <p className="text-gray-400 text-sm font-medium">Manage your public profile and account preferences.</p>
         </header>
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
-          {/* Avatar & Status Column */}
-          <div className="lg:col-span-4 space-y-8">
-            <div className="bg-[#0a0b0d] p-10 rounded-[3.5rem] border border-white/10 shadow-2xl flex flex-col items-center relative overflow-hidden group">
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-cyber-cyan to-transparent opacity-30" />
-              
-              <motion.div 
-                whileHover={{ scale: 1.02 }}
-                onClick={handleAvatarClick}
-                className="relative group cursor-pointer mb-8"
-              >
-                <div className={`w-48 h-48 rounded-[3rem] p-1 bg-gradient-to-br from-cyber-cyan/40 to-transparent transition-all group-hover:from-cyber-cyan shadow-glow-cyan overflow-hidden ${uploading ? 'opacity-50' : ''}`}>
-                  <div className="w-full h-full bg-[#050608] rounded-[2.8rem] overflow-hidden flex items-center justify-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          {/* Avatar Section */}
+          <div className="lg:col-span-4">
+            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col items-center">
+              <div className="relative group cursor-pointer mb-6" onClick={handleAvatarClick}>
+                <div className={`w-40 h-40 rounded-3xl p-1 bg-gradient-to-br from-purple-100 to-transparent transition-all group-hover:from-purple-200 overflow-hidden ${uploading ? 'opacity-50' : ''}`}>
+                  <div className="w-full h-full bg-gray-50 rounded-2xl overflow-hidden flex items-center justify-center border border-gray-100">
                     {formData.avatar ? (
                       <img src={getAvatarUrl(formData.avatar)} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="text-6xl font-black text-white">
-                        {(formData.displayName || "U").charAt(0).toUpperCase()}
-                      </div>
+                      <span className="text-5xl font-bold text-gray-300">{(formData.displayName || "U").charAt(0).toUpperCase()}</span>
                     )}
                   </div>
                 </div>
-                
-                <div className="absolute inset-0 bg-cyber-cyan/10 rounded-[3rem] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
-                  <div className="px-5 py-2.5 bg-white text-black rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl">Update ID</div>
-                </div>
-                
-                {uploading && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-10 h-10 border-4 border-cyber-cyan border-t-transparent rounded-full animate-spin shadow-glow-cyan" />
+
+                {isEditing && (
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="px-4 py-2 bg-white/90 backdrop-blur-sm text-[#8b5cf6] rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-sm">Change Photo</div>
                   </div>
                 )}
-              </motion.div>
+                {uploading && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-8 h-8 border-3 border-[#8b5cf6] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
               <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
               
               <div className="w-full space-y-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-center text-gray-500 mb-6">Synchronization Status</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {['Available', 'Busy', 'Away', 'Invisible'].map((s) => (
+                <p className="text-[10px] font-bold uppercase tracking-widest text-center text-gray-400">Current Status</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Available', 'Away', 'Busy', 'Invisible'].map((s) => (
                     <button
                       key={s}
                       onClick={() => setFormData(prev => ({ ...prev, status: s }))}
-                      className={`py-3.5 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all border ${
+                      className={`py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border ${
                         formData.status === s 
-                          ? 'bg-white border-white text-black shadow-glow-cyan' 
-                          : 'bg-white/[0.03] border-white/5 text-gray-500 hover:border-white/20'
-                      }`}
+                          ? 'bg-purple-50 border-purple-100 text-[#8b5cf6]' 
+                          : 'bg-gray-50 border-gray-100 text-gray-400 hover:border-gray-200'
+                      } ${!isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                      disabled={!isEditing}
                     >
                       {s}
                     </button>
@@ -157,92 +169,184 @@ const ProfileSettings = () => {
                 </div>
               </div>
             </div>
-
-            <div className="bg-[#0a0b0d] p-8 rounded-[2.5rem] border border-white/10 opacity-40">
-              <div className="flex items-center gap-4">
-                <div className="w-2 h-2 rounded-full bg-cyber-cyan animate-pulse shadow-glow-cyan" />
-                <span className="text-[8px] font-black uppercase tracking-[0.5em] text-white">Security Protocol: Active</span>
-              </div>
-            </div>
           </div>
 
-          {/* Form Column */}
-          <div className="lg:col-span-8 flex flex-col">
-            <div className="bg-[#0a0b0d]/60 backdrop-blur-3xl p-12 rounded-[4rem] border border-white/10 shadow-2xl flex-1 relative overflow-hidden">
-              <div className="absolute -top-32 -right-32 w-64 h-64 bg-cyber-cyan/5 rounded-full blur-[100px]" />
-              
-              <form onSubmit={handleSubmit} className="relative z-10 space-y-10 h-full flex flex-col">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 ml-1">Identity Name</label>
+          {/* Form Section */}
+          <div className="lg:col-span-8">
+            <div className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm">
+              <form onSubmit={handleSubmit} className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Display Name</label>
                     <input
                       type="text"
                       name="displayName"
                       value={formData.displayName}
                       onChange={handleChange}
-                      className="w-full bg-white/[0.03] border border-white/5 rounded-[1.5rem] px-8 py-5 text-sm font-black text-white focus:outline-none focus:border-cyber-cyan/40 transition-all placeholder:text-gray-800 tracking-widest"
-                      placeholder="ENTER IDENTITY"
+                      readOnly={!isEditing}
+                      className={`w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-medium text-gray-800 outline-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed' : 'focus:border-purple-200 focus:bg-white'}`}
+                      placeholder="Enter your name"
                       required
                     />
                   </div>
-
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 ml-1">Neural Handle</label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Username</label>
                     <input
                       type="text"
                       name="username"
                       value={formData.username}
                       onChange={handleChange}
-                      className="w-full bg-white/[0.03] border border-white/5 rounded-[1.5rem] px-8 py-5 text-sm font-black text-white focus:outline-none focus:border-cyber-cyan/40 transition-all placeholder:text-gray-800 tracking-widest"
-                      placeholder="ENTER HANDLE"
+                      readOnly={!isEditing}
+                      className={`w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-medium text-gray-800 outline-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed' : 'focus:border-purple-200 focus:bg-white'}`}
+                      placeholder="Choose a handle"
                       required
                     />
                   </div>
-
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 ml-1">Alias (Nickname)</label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Email (Gmail)</label>
                     <input
-                      type="text"
-                      name="nickname"
-                      value={formData.nickname}
-                      onChange={handleChange}
-                      className="w-full bg-white/[0.03] border border-white/5 rounded-[1.5rem] px-8 py-5 text-sm font-black text-white focus:outline-none focus:border-cyber-cyan/40 transition-all placeholder:text-gray-800 tracking-widest"
-                      placeholder="ENTER ALIAS"
+                      type="email"
+                      value={user?.email || ''}
+                      readOnly
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-medium text-gray-800 outline-none opacity-70 cursor-not-allowed"
                     />
                   </div>
-                  
-                  <div className="md:col-span-2 space-y-3">
-                    <label className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 ml-1">Mission Log (Bio)</label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Password</label>
+                    <input
+                      type="password"
+                      value="********"
+                      readOnly
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-medium text-gray-800 outline-none opacity-70 cursor-not-allowed"
+                    />
+                    <p className="text-[10px] text-gray-400 ml-1 mt-1">Change your password in the Security section below.</p>
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Bio / Mission</label>
                     <textarea
                       name="bio"
                       value={formData.bio}
                       onChange={handleChange}
-                      rows="5"
-                      className="w-full bg-white/[0.03] border border-white/5 rounded-[2rem] px-8 py-6 text-sm font-medium text-white focus:outline-none focus:border-cyber-cyan/40 transition-all placeholder:text-gray-800 resize-none leading-relaxed"
-                      placeholder="ENTER MISSION OBJECTIVES..."
+                      readOnly={!isEditing}
+                      rows="4"
+                      className={`w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-medium text-gray-800 outline-none transition-all resize-none ${!isEditing ? 'opacity-70 cursor-not-allowed' : 'focus:border-purple-200 focus:bg-white'}`}
+                      placeholder="Tell us about yourself..."
                     />
                   </div>
                 </div>
 
-                <div className="mt-auto pt-10 flex justify-end">
-                  <motion.button 
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    type="submit" 
-                    disabled={saving || uploading}
-                    className="px-12 py-5 rounded-3xl bg-white text-black font-black text-[11px] uppercase tracking-[0.4em] shadow-glow-cyan hover:bg-cyber-cyan transition-all disabled:opacity-50"
+                <div className="flex flex-col sm:flex-row justify-between items-center pt-4 gap-4">
+                  <button 
+                    type="button" 
+                    onClick={() => logout()}
+                    className="px-8 py-4 bg-red-50 text-red-600 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-red-100 transition-all w-full sm:w-auto"
                   >
-                    {saving ? "TRANSMITTING..." : "SAVE_IDENT_v2"}
-                  </motion.button>
+                    Log Out
+                  </button>
+                  
+                  <div className="flex gap-4 w-full sm:w-auto">
+                    {!isEditing ? (
+                      <button 
+                        type="button" 
+                        onClick={(e) => { e.preventDefault(); setIsEditing(true); }}
+                        className="px-10 py-4 bg-[#8b5cf6] text-white rounded-2xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-purple-100 hover:bg-[#7c3aed] transition-all w-full sm:w-auto"
+                      >
+                        Edit Profile
+                      </button>
+                    ) : (
+                      <>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setIsEditing(false);
+                            setFormData({
+                              displayName: user.displayName || user.name || '',
+                              username: user.username || '',
+                              bio: user.bio || '',
+                              status: user.status || 'Available',
+                              avatar: user.avatar || '',
+                              nickname: user.nickname || ''
+                            });
+                          }}
+                          className="px-8 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-gray-200 transition-all w-full sm:w-auto"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          type="submit" 
+                          disabled={saving || uploading}
+                          className="px-10 py-4 bg-[#8b5cf6] text-white rounded-2xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-purple-100 hover:bg-[#7c3aed] transition-all disabled:opacity-50 w-full sm:w-auto"
+                        >
+                          {saving ? "Saving..." : "Save Changes"}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </form>
             </div>
+            
+            {/* Security Section */}
+            <div className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm mt-10">
+              <h2 className="text-xl font-bold text-gray-900 tracking-tight mb-6">Security & Password</h2>
+              <form onSubmit={handlePasswordSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Current Password</label>
+                    <input
+                      type="password"
+                      value={passForm.currentPassword}
+                      onChange={(e) => setPassForm(p => ({ ...p, currentPassword: e.target.value }))}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-medium text-gray-800 outline-none focus:border-purple-200 focus:bg-white transition-all"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">New Password</label>
+                    <input
+                      type="password"
+                      value={passForm.newPassword}
+                      onChange={(e) => setPassForm(p => ({ ...p, newPassword: e.target.value }))}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm font-medium text-gray-800 outline-none focus:border-purple-200 focus:bg-white transition-all"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button 
+                    type="submit" 
+                    disabled={savingPass || user.authProvider === 'google'}
+                    className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold text-sm uppercase tracking-widest shadow-lg hover:bg-gray-800 transition-all disabled:opacity-50"
+                  >
+                    {savingPass ? "Updating..." : "Update Password"}
+                  </button>
+                </div>
+                {user.authProvider === 'google' && (
+                  <p className="text-xs text-red-500 font-medium text-right mt-2">Password change is not available for Google Sign-In accounts.</p>
+                )}
+              </form>
+            </div>
+
+            {/* Danger Zone */}
+            <div className="bg-red-50 p-10 rounded-[2.5rem] border border-red-100 shadow-sm mt-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+              <div>
+                <h2 className="text-xl font-bold text-red-600 tracking-tight mb-2">Delete Account</h2>
+                <p className="text-sm text-red-400 font-medium max-w-md">Once you delete your account, there is no going back. Please be certain.</p>
+              </div>
+              <button 
+                type="button" 
+                onClick={handleDeleteAccount}
+                className="px-8 py-4 bg-red-600 text-white rounded-2xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-red-200 hover:bg-red-700 transition-all flex-shrink-0"
+              >
+                Delete Account
+              </button>
+            </div>
+
           </div>
         </div>
       </div>
     </Layout>
   );
 };
-
 
 export default ProfileSettings;

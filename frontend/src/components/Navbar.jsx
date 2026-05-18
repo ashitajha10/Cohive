@@ -1,7 +1,6 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import useAuthStore from '../store/authStore';
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import useAuthStore from "../store/authStore";
 import { getAvatarUrl } from "../utils/avatar";
 import NotificationDropdown from "./NotificationDropdown";
 
@@ -9,49 +8,53 @@ const Navbar = ({ onMenuClick }) => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
-    <motion.header 
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      className="h-20 px-8 flex items-center justify-between relative z-30"
-    >
-      <div className="flex items-center gap-6">
-        <button 
-          onClick={onMenuClick}
-          className="lg:hidden p-3 rounded-2xl bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all shadow-holographic"
-        >
+    <nav className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-8 shrink-0 relative z-10 shadow-sm">
+      <div className="flex items-center gap-4 lg:hidden">
+        <button onClick={onMenuClick} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        
-        <div className="hidden lg:flex items-center gap-3 px-6 py-2 bg-gradient-to-r from-white/10 to-white/5 border border-white/10 rounded-full backdrop-blur-2xl shadow-[0_0_15px_rgba(255,255,255,0.05)]">
-          <div className="w-2 h-2 rounded-full bg-cyber-cyan animate-pulse shadow-[0_0_10px_rgba(0,243,255,0.8)]"></div>
-          <span className="text-[10px] font-black text-white uppercase tracking-[0.2em] font-orbitron italic">System Nominal • Sector 7G</span>
-        </div>
       </div>
- 
+
+      <div className="flex-1 hidden lg:block">
+        {/* Can put breadcrumbs or search here if needed */}
+      </div>
+
       <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2">
-          <NotificationDropdown />
-          
-          <div className="w-px h-8 bg-white/10 mx-2"></div>
-          
-          <motion.button 
-            whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(255,0,85,0.5)" }}
-            whileTap={{ scale: 0.95 }}
-            onClick={logout}
-            className="group px-6 py-3 bg-gradient-to-r from-cyber-pink/10 to-transparent border border-cyber-pink/30 text-cyber-pink rounded-2xl hover:bg-cyber-pink hover:text-white transition-all duration-300 flex items-center gap-3 shadow-[0_0_15px_-5px_rgba(255,0,85,0.4)] font-orbitron italic text-[10px] font-black uppercase tracking-widest"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-            Disconnect
-          </motion.button>
-        </div>
+        {user && (
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-bold text-gray-900 leading-tight">{user.displayName || user.name}</p>
+              <p className="text-[11px] text-gray-400 font-medium">{user.email}</p>
+            </div>
+            <div className="w-10 h-10 rounded-full border-2 border-purple-100 p-0.5 overflow-hidden">
+              <img 
+                src={getAvatarUrl(user.avatar)} 
+                alt="Profile" 
+                className="w-full h-full object-cover rounded-full"
+              />
+            </div>
+          </div>
+        )}
+        
+        <NotificationDropdown />
+        <div className="h-6 w-px bg-gray-100" />
+        
+        <button 
+          onClick={handleLogout}
+          className="px-5 py-2 bg-gray-50 text-gray-600 rounded-xl text-xs font-bold hover:bg-red-50 hover:text-red-600 transition-all"
+        >
+          Logout
+        </button>
       </div>
-      
-      {/* Cinematic Glass Background */}
-      <div className="absolute inset-x-8 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-cyber-cyan/20 to-transparent"></div>
-    </motion.header>
+    </nav>
   );
 };
 
