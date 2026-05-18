@@ -24,8 +24,9 @@ const InputField = ({ label, type, name, value, onChange, placeholder }) => (
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const navigate = useNavigate();
-  const { login, token } = useAuthStore();
+  const { login, token, forgotPassword } = useAuthStore();
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -49,8 +50,20 @@ const Login = () => {
     setLoading(false);
   };
 
-  const handleForgotPassword = () => {
-    navigate('/forgot-password', { state: { email: formData.email } });
+  const handleForgotPassword = async () => {
+    if (!formData.email || !formData.email.includes('@')) {
+      return showToast("Please enter your email address in the Email Address field first.", "error");
+    }
+
+    setForgotLoading(true);
+    const result = await forgotPassword(formData.email);
+    setForgotLoading(false);
+
+    if (result.success) {
+      showToast("Recovery email sent to your inbox! Check your spam folder if not found.", "success");
+    } else {
+      showToast(result.error, 'error');
+    }
   };
 
   return (
@@ -81,10 +94,10 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  disabled={loading}
+                  disabled={forgotLoading || loading}
                   className="text-xs font-bold text-[#8b5cf6] hover:text-[#7c3aed] transition-all hover:underline bg-transparent border-none p-0 cursor-pointer disabled:opacity-50"
                 >
-                  Forgot Password?
+                  {forgotLoading ? "Sending Link..." : "Forgot Password?"}
                 </button>
               </div>
             </div>
