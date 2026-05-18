@@ -52,23 +52,61 @@ const ProfileSettings = () => {
     fileInputRef.current.click();
   };
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setUploading(true);
-    const uploadData = new FormData();
-    uploadData.append('file', file);
-    try {
-      const res = await api.post('/upload', uploadData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setFormData(prev => ({ ...prev, avatar: res.data.url }));
-      showToast("Avatar updated", "success");
-    } catch (err) {
-      showToast("Avatar update failed", "error");
-    } finally {
-      setUploading(false);
+
+    if (!file.type.startsWith('image/')) {
+      return showToast("Please select an image file", "error");
     }
+
+    setUploading(true);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 256;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Compress and encode to base64
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        
+        setFormData(prev => ({ ...prev, avatar: dataUrl }));
+        setUploading(false);
+        showToast("Avatar prepared! Click Save Changes to apply.", "success");
+      };
+      img.onerror = () => {
+        setUploading(false);
+        showToast("Failed to process image", "error");
+      };
+      img.src = event.target.result;
+    };
+    reader.onerror = () => {
+      setUploading(false);
+      showToast("Error reading file", "error");
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
