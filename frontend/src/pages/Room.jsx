@@ -192,7 +192,7 @@ function Room() {
               </svg>
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Collaboration Room</h1>
+              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{room?.name || "Collaboration Room"}</h1>
               <p className="text-sm font-bold text-[#8b5cf6] uppercase tracking-widest mt-1">Room ID: {room?.code || id}</p>
             </div>
           </div>
