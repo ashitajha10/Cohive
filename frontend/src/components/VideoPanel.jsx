@@ -250,7 +250,7 @@ const VideoElement = ({ stream, muted, mirror, contain }) => {
       autoPlay
       playsInline
       muted={muted}
-      className={`w-full h-full ${contain ? 'object-contain' : 'object-cover'} ${mirror ? 'scale-x-[-1]' : ''}`}
+      className={`absolute inset-0 w-full h-full ${contain ? 'object-contain bg-black' : 'object-cover bg-[#050608]'} ${mirror ? 'scale-x-[-1]' : ''}`}
     />
   );
 };
