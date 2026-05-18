@@ -185,7 +185,10 @@ function Room({ roomIdProp, isMinimized, onLeave }) {
       <div className="w-full h-full bg-gray-950 text-white flex flex-col justify-between p-3 relative group overflow-hidden rounded-3xl border border-white/10 shadow-2xl animate-fade-in">
         <div className="hidden">
           {participants.map(p => (
-            <AudioElement key={p.socketId} stream={p.stream} isMuted={p.isMuted} />
+            <React.Fragment key={p.socketId}>
+              <AudioElement stream={p.stream} isMuted={p.isMuted} />
+              {p.screenStream && <AudioElement stream={p.screenStream} isMuted={false} />}
+            </React.Fragment>
           ))}
         </div>
         <div className="absolute inset-0 z-0 flex items-center justify-center bg-black/80 pointer-events-none overflow-hidden rounded-3xl">
@@ -236,7 +239,10 @@ function Room({ roomIdProp, isMinimized, onLeave }) {
     <Layout>
       <div className="hidden">
         {participants.map(p => (
-          <AudioElement key={p.socketId} stream={p.stream} isMuted={p.isMuted} />
+          <React.Fragment key={p.socketId}>
+            <AudioElement stream={p.stream} isMuted={p.isMuted} />
+            {p.screenStream && <AudioElement stream={p.screenStream} isMuted={false} />}
+          </React.Fragment>
         ))}
       </div>
       <div className="flex flex-col h-full gap-8 animate-fade-in">

@@ -313,7 +313,10 @@ export const useWebRTC = (roomId, user, isRoomJoined) => {
 
   const shareScreen = useCallback(async () => {
     try {
-      const sStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const sStream = await navigator.mediaDevices.getDisplayMedia({ 
+        video: true, 
+        audio: true 
+      });
       screenStreamRef.current = sStream;
       const screenTrack = sStream.getVideoTracks()[0];
 
