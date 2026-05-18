@@ -16,9 +16,6 @@ export default defineConfig({
       protocolImports: true,
     }),
   ],
-  define: {
-    global: 'window',
-  },
   server: {
     port: 5173,
     strictPort: true,
