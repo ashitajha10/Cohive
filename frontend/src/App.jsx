@@ -1,7 +1,8 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useParams, useLocation } from "react-router-dom";
 // App main entry point with routes configuration
 import useAuthStore from "./store/authStore";
+import useActiveRoomStore from "./store/activeRoomStore";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -20,8 +21,33 @@ import Resources from "./pages/Resources";
 import Notes from "./pages/Notes";
 
 import ProtectedRoute from "./components/ProtectedRoute";
-
 import SocketManager from "./components/SocketManager";
+
+function RoomRouteInitializer() {
+  const { id } = useParams();
+  const { setActiveRoom } = useActiveRoomStore();
+  
+  useEffect(() => {
+    if (id) setActiveRoom(id);
+  }, [id, setActiveRoom]);
+
+  return null;
+}
+
+function PersistentRoomSession() {
+  const { activeRoomId, leaveRoom } = useActiveRoomStore();
+  const location = useLocation();
+
+  if (!activeRoomId) return null;
+
+  const isMinimized = !location.pathname.startsWith(`/room/${activeRoomId}`);
+
+  return (
+    <div className={isMinimized ? "fixed bottom-8 right-8 w-[380px] h-[260px] z-[100] shadow-2xl rounded-3xl overflow-hidden border border-purple-500/30 animate-fade-in bg-gray-950 transition-all duration-500 hover:scale-[1.02]" : "fixed inset-0 z-50 bg-gray-50"}>
+      <Room roomIdProp={activeRoomId} isMinimized={isMinimized} onLeave={leaveRoom} />
+    </div>
+  );
+}
 
 function App() {
   const { fetchUser, token, setAuth } = useAuthStore();
@@ -46,6 +72,7 @@ function App() {
   return (
     <BrowserRouter>
       <SocketManager />
+      <PersistentRoomSession />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Login />} />
@@ -83,7 +110,7 @@ function App() {
           path="/room/:id"
           element={
             <ProtectedRoute>
-              <Room />
+              <RoomRouteInitializer />
             </ProtectedRoute>
           }
         />

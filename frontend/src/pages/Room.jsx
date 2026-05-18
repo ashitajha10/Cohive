@@ -18,9 +18,10 @@ import ResourcesPanel from "../components/ResourcesPanel";
 import WhiteboardPanel from "../components/WhiteboardPanel";
 import ParticipantsPanel from "../components/ParticipantsPanel";
 
-function Room() {
-  const { id } = useParams();
+function Room({ roomIdProp, isMinimized, onLeave }) {
+  const urlParams = useParams();
   const navigate = useNavigate();
+  const id = roomIdProp || urlParams.id;
   const { user } = useAuthStore();
   const { showToast } = useToast();
 
@@ -173,8 +174,57 @@ function Room() {
     };
   }, [id]);
 
+  if (loading && isMinimized) return <div className="w-full h-full bg-gray-950 flex items-center justify-center rounded-3xl text-white font-bold text-xs"><Loader size="md" /></div>;
   if (loading) return <Layout><div className="flex items-center justify-center h-full"><Loader size="xl" /></div></Layout>;
+  if (error && isMinimized) return <div className="w-full h-full bg-gray-950 flex items-center justify-center rounded-3xl text-red-400 font-bold text-xs">Room Error</div>;
   if (error) return <Layout><div className="flex flex-col items-center justify-center h-full gap-4"><h2 className="text-2xl font-bold">Room not found</h2><Button onClick={() => navigate("/dashboard")}>Back to Dashboard</Button></div></Layout>;
+
+  if (isMinimized) {
+    return (
+      <div className="w-full h-full bg-gray-950 text-white flex flex-col justify-between p-3 relative group overflow-hidden rounded-3xl border border-white/10 shadow-2xl animate-fade-in">
+        <div className="absolute inset-0 z-0 flex items-center justify-center bg-black/80 pointer-events-none overflow-hidden rounded-3xl">
+          <VideoPanel 
+            participants={participants} 
+            localStream={localStream} 
+            mediaError={mediaError}
+            user={user} 
+            isMuted={muted}
+            isCameraOff={cameraOff}
+            isScreenSharing={isScreenSharing}
+            createdBy={room?.createdBy}
+            screenStream={screenStream}
+          />
+        </div>
+        <div className="relative z-10 flex items-center justify-between bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 shadow-lg">
+          <span className="text-xs font-bold truncate pr-2 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
+            <span className="truncate">{room?.name || "Meeting in progress"}</span>
+          </span>
+          <button 
+            onClick={() => navigate(`/room/${id}`)}
+            className="p-1.5 hover:bg-white/20 rounded-lg text-white transition-all cursor-pointer shadow-sm flex items-center gap-1 font-bold text-[10px] bg-purple-600/50 hover:bg-purple-600" 
+            title="Return to Meeting full screen"
+          >
+            <span>Expand</span>
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            </svg>
+          </button>
+        </div>
+        <div className="relative z-10 flex items-center justify-center gap-3 bg-black/60 backdrop-blur-md py-2 px-3 rounded-2xl border border-white/10 opacity-90 group-hover:opacity-100 transition-opacity shadow-lg">
+          <button onClick={handleToggleMute} className={`p-2 rounded-xl transition-all ${muted ? 'bg-red-500 text-white' : 'bg-white/20 hover:bg-white/30 text-white'}`} title="Mute/Unmute">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d={muted ? "M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z M4 4l16 16" : "M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"} /></svg>
+          </button>
+          <button onClick={handleToggleCamera} className={`p-2 rounded-xl transition-all ${cameraOff ? 'bg-red-500 text-white' : 'bg-white/20 hover:bg-white/30 text-white'}`} title="Camera On/Off">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d={cameraOff ? "M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z M4 4l16 16" : "M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"} /></svg>
+          </button>
+          <button onClick={() => { if(onLeave) onLeave(); navigate("/dashboard"); }} className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg transition-all" title="Leave Meeting">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Layout>
@@ -322,7 +372,7 @@ function Room() {
                       </svg>
                     </button>
                     <button 
-                      onClick={() => navigate("/dashboard")}
+                      onClick={() => { if(onLeave) onLeave(); navigate("/dashboard"); }}
                       className="p-4 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30 transition-all hover:scale-105 active:scale-95"
                       title="Leave Room"
                     >
