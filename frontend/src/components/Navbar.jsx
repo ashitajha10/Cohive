@@ -4,7 +4,7 @@ import useAuthStore from "../store/authStore";
 import { getAvatarUrl } from "../utils/avatar";
 import NotificationDropdown from "./NotificationDropdown";
 
-const Navbar = ({ onMenuClick, onCollapse, isCollapsible }) => {
+const Navbar = ({ onMenuClick, isCollapsed, onToggleCollapse, isCollapsible }) => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
@@ -14,7 +14,7 @@ const Navbar = ({ onMenuClick, onCollapse, isCollapsible }) => {
   };
 
   return (
-    <nav className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-8 shrink-0 relative z-10 shadow-sm">
+    <nav className="h-full w-full bg-white flex items-center justify-between px-8 shrink-0 relative z-10">
       <div className="flex items-center gap-4 lg:hidden">
         <button onClick={onMenuClick} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -30,14 +30,14 @@ const Navbar = ({ onMenuClick, onCollapse, isCollapsible }) => {
       <div className="flex items-center gap-6">
         {isCollapsible && (
           <button 
-            onClick={onCollapse} 
-            className="p-2 text-gray-400 hover:text-[#8b5cf6] hover:bg-purple-50 rounded-xl transition-all shadow-sm flex items-center gap-2 text-xs font-bold"
-            title="Collapse Top Bar"
+            onClick={onToggleCollapse} 
+            className="px-3 py-1.5 text-gray-500 hover:text-[#8b5cf6] hover:bg-purple-50 rounded-xl transition-all shadow-sm flex items-center gap-2 text-xs font-bold border border-gray-100 bg-gray-50"
+            title={isCollapsed ? "Expand Header" : "Collapse Header"}
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d={isCollapsed ? "M19 13l-7 7-7-7m14-8l-7 7-7-7" : "M5 11l7-7 7 7M5 19l7-7 7 7"} />
             </svg>
-            <span className="hidden sm:inline">Collapse</span>
+            <span className="hidden sm:inline">{isCollapsed ? "Expand Header" : "Collapse Header"}</span>
           </button>
         )}
         {user && (

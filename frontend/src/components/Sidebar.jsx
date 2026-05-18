@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import useAuthStore from '../store/authStore';
 import Logo from './Logo';
 
-const Sidebar = ({ onClose, onCollapse, isCollapsible }) => {
+const Sidebar = ({ onClose, isCollapsed, onToggleCollapse, isCollapsible }) => {
   const location = useLocation();
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -48,34 +48,34 @@ const Sidebar = ({ onClose, onCollapse, isCollapsible }) => {
   ];
 
   return (
-    <div className="w-64 h-full bg-white border-r border-gray-100 flex flex-col p-6 shadow-sm overflow-y-auto custom-scrollbar shrink-0">
+    <div className={`h-full bg-white flex flex-col ${isCollapsed ? 'p-4 items-center' : 'p-6'} overflow-y-auto custom-scrollbar shrink-0 w-full`}>
       {/* Logo and Collapse Button */}
-      <div className="mb-12 flex items-center justify-between">
-        <Logo variant="purple" size="md" showText={true} />
+      <div className={`mb-12 flex items-center ${isCollapsed ? 'justify-center flex-col gap-4' : 'justify-between'} w-full`}>
+        <Logo variant="purple" size={isCollapsed ? "sm" : "md"} showText={!isCollapsed} />
         {isCollapsible && (
           <button 
-            onClick={onCollapse} 
-            className="p-2 text-gray-400 hover:text-[#8b5cf6] hover:bg-purple-50 rounded-xl transition-all shadow-sm"
-            title="Collapse Sidebar"
+            onClick={onToggleCollapse} 
+            className="p-2 text-gray-400 hover:text-[#8b5cf6] hover:bg-purple-50 rounded-xl transition-all shadow-sm flex items-center justify-center shrink-0"
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d={isCollapsed ? "M13 5l7 7-7 7M5 5l7 7-7 7" : "M11 19l-7-7 7-7m8 14l-7-7 7-7"} />
             </svg>
           </button>
         )}
       </div>
 
       {/* Menu Label */}
-      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4 px-2">Main Menu</p>
+      {!isCollapsed && <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4 px-2">Main Menu</p>}
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-2">
+      <nav className="flex-1 space-y-2 w-full">
         {menuItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
-            <Link key={item.name} to={item.path} onClick={onClose} className={`sidebar-item ${isActive ? 'active' : ''}`}>
+            <Link key={item.name} to={item.path} onClick={onClose} title={isCollapsed ? item.name : undefined} className={`sidebar-item ${isActive ? 'active' : ''} ${isCollapsed ? 'justify-center p-3' : ''}`}>
               {item.icon(isActive)}
-              <span>{item.name}</span>
+              {!isCollapsed && <span>{item.name}</span>}
             </Link>
           );
         })}
@@ -83,10 +83,11 @@ const Sidebar = ({ onClose, onCollapse, isCollapsible }) => {
 
       {/* User Profile Card */}
       {user && (
-        <div className="mt-auto pt-6 border-t border-gray-100">
+        <div className="mt-auto pt-6 border-t border-gray-100 w-full">
           <div 
             onClick={() => { navigate('/profile'); if(onClose) onClose(); }}
-            className="flex items-center gap-3 p-3 rounded-2xl hover:bg-purple-50 hover:shadow-sm hover:shadow-purple-100/50 transition-all cursor-pointer border border-transparent hover:border-purple-100"
+            className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'gap-3 p-3'} rounded-2xl hover:bg-purple-50 hover:shadow-sm hover:shadow-purple-100/50 transition-all cursor-pointer border border-transparent hover:border-purple-100`}
+            title={isCollapsed ? `${user.displayName || user.name} (@${user.username})` : undefined}
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 border border-purple-200 flex items-center justify-center overflow-hidden flex-shrink-0">
               {user.avatar ? (
@@ -97,18 +98,19 @@ const Sidebar = ({ onClose, onCollapse, isCollapsible }) => {
                 </span>
               )}
             </div>
-            <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-sm font-bold text-gray-900 truncate">
-                {user.displayName || user.name}
-              </span>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">
-                @{user.username}
-              </span>
-            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="text-sm font-bold text-gray-900 truncate">
+                  {user.displayName || user.name}
+                </span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">
+                  @{user.username}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}
-
     </div>
   );
 };
